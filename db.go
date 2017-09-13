@@ -6,26 +6,29 @@
 package db
 
 import (
+	"fmt"
 	"os"
+
+	"github.com/cznic/internal/buffer"
 )
 
-type DB interface {
-	// Alloc allocates a database block large enough for storing size bytes
+type Storage interface {
+	// Alloc allocates a storage block large enough for storing size bytes
 	// and returns its offset or an error, if any.
 	Alloc(size int64) (int64, error)
 
-	// Calloc is like Alloc but the allocated database block is zeroed up
+	// Calloc is like Alloc but the allocated storage block is zeroed up
 	// to size.
 	Calloc(size int64) (int64, error)
 
-	// Close finishes database use.
+	// Close finishes storage use.
 	Close() error
 
-	// Free recycles the allocated database block at off.
+	// Free recycles the allocated storage block at off.
 	Free(off int64) error
 
 	// ReadAt reads len(p) bytes into p starting at offset off in the
-	// database. It returns the number of bytes read (0 <= n <= len(p)) and
+	// storage. It returns the number of bytes read (0 <= n <= len(p)) and
 	// any error encountered.
 	//
 	// When ReadAt returns n < len(p), it returns a non-nil error
@@ -35,7 +38,7 @@ type DB interface {
 	// space during the call.
 	//
 	// If the n = len(p) bytes returned by ReadAt are at the end of the
-	// database, ReadAt may return either err == EOF or err == nil.
+	// storage, ReadAt may return either err == EOF or err == nil.
 	ReadAt(p []byte, off int64) (n int, err error)
 
 	// Realloc changes the size of the file block allocated at off, which
@@ -54,7 +57,7 @@ type DB interface {
 	// SetRoot sets the offset of the database root object.
 	SetRoot(root int) error
 
-	// Stat returns the os.FileInfo structure describing the database. If
+	// Stat returns the os.FileInfo structure describing the storage. If
 	// there is an error, it will be of type *os.PathError.
 	Stat() (os.FileInfo, error)
 
@@ -63,19 +66,55 @@ type DB interface {
 	// recently written data to disk.
 	Sync() error
 
-	// Truncate changes the size of the database. If there is an error, it
+	// Truncate changes the size of the storage. If there is an error, it
 	// will be of type *os.PathError.
 	Truncate(int64) error
 
-	// UsableSize reports the size of the database block allocated at off,
-	// which must have been returned from Alloc or Realloc. The allocated
-	// file block size can be larger than the size originally requested
-	// from Alloc or Realloc.
-	UsableSize(off int64) (int64, error)
+	//TODO-? // UsableSize reports the size of the storage block allocated at off,
+	//TODO-? // which must have been returned from Alloc or Realloc. The allocated
+	//TODO-? // file block size can be larger than the size originally requested
+	//TODO-? // from Alloc or Realloc.
+	//TODO-? UsableSize(off int64) (int64, error)
 
-	// WriteAt writes len(p) bytes from p to the database at offset off. It
+	// WriteAt writes len(p) bytes from p to the storage at offset off. It
 	// returns the number of bytes written from p (0 <= n <= len(p)) and
 	// any error encountered that caused the write to stop early. WriteAt
 	// must return a non-nil error if it returns n < len(p).
 	WriteAt(p []byte, off int64) (n int, err error)
+}
+
+type DB struct {
+	Storage
+}
+
+func NewDB(s Storage) (*DB, error) { return &DB{s}, nil }
+
+func (db *DB) r8(off int64) (int64, error) {
+	p := buffer.Get(8)
+	b := *p
+	if n, err := db.ReadAt(b, off); n != 8 {
+		if err == nil {
+			err = fmt.Errorf("short storage read")
+		}
+		return 0, err
+	}
+
+	var n int64
+	for _, v := range b {
+		n = n<<8 | int64(v)
+	}
+	buffer.Put(p)
+	return n, nil
+}
+
+func (db *DB) w8(off, n int64) error {
+	p := buffer.Get(8)
+	b := *p
+	for i := range b {
+		b[i] = byte(n >> 56)
+		n <<= 8
+	}
+	_, err := db.WriteAt(b, off)
+	buffer.Put(p)
+	return err
 }
