@@ -34,7 +34,7 @@ edit:
 editor:
 	gofmt -l -s -w *.go
 	go test -i
-	go test -v | tee log
+	go test | tee log
 	go build
 
 internalError:
