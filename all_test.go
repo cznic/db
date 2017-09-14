@@ -82,11 +82,11 @@ func (s *storage) SetRoot(n int64) error { return w8(s, 0, n) }
 func (s *storage) Root() (int64, error) {
 	fi, err := s.Stat()
 	if err != nil {
-		return -1, err
+		return 0, err
 	}
 
 	if fi.Size() == 0 {
-		return -1, nil
+		return 0, nil
 	}
 
 	return r8(s, 0)
@@ -174,8 +174,4 @@ func tmpDB(t testing.TB, ts func(t testing.TB) (file.File, func())) (*testDB, fu
 				t.Errorf("error closing db: %v", err)
 			}
 		}
-}
-
-func Test(t *testing.T) {
-	t.Logf("TODO")
 }

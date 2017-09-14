@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package DB implements some data structures often found in databases.
+// Package db implements some data structures often found in databases.
 package db
 
 import (
@@ -16,6 +16,7 @@ var (
 	_ Storage = (*DB)(nil)
 )
 
+// Storage represents a database back end.
 type Storage interface {
 	// Alloc allocates a storage block large enough for storing size bytes
 	// and returns its offset or an error, if any.
@@ -55,7 +56,7 @@ type Storage interface {
 
 	// Root returns the offset of the database root object or an error, if
 	// any.  It's not an error if a newly created or empty database has no
-	// root yet.  The returned offset in that case will be < 0.
+	// root yet.  The returned offset in that case will be zero.
 	Root() (int64, error)
 
 	// SetRoot sets the offset of the database root object.
@@ -74,12 +75,6 @@ type Storage interface {
 	// will be of type *os.PathError.
 	Truncate(int64) error
 
-	//TODO-? // UsableSize reports the size of the storage block allocated at off,
-	//TODO-? // which must have been returned from Alloc or Realloc. The allocated
-	//TODO-? // file block size can be larger than the size originally requested
-	//TODO-? // from Alloc or Realloc.
-	//TODO-? UsableSize(off int64) (int64, error)
-
 	// WriteAt writes len(p) bytes from p to the storage at offset off. It
 	// returns the number of bytes written from p (0 <= n <= len(p)) and
 	// any error encountered that caused the write to stop early. WriteAt
@@ -87,10 +82,12 @@ type Storage interface {
 	WriteAt(p []byte, off int64) (n int, err error)
 }
 
+// DB represents a database.
 type DB struct {
 	Storage
 }
 
+// NewDB returns a newly created DB backed by s or an error, if any.
 func NewDB(s Storage) (*DB, error) { return &DB{s}, nil }
 
 func (db *DB) r8(off int64) (int64, error) { return r8(db, off) }
