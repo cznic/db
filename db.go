@@ -12,6 +12,10 @@ import (
 	"github.com/cznic/internal/buffer"
 )
 
+var (
+	_ Storage = (*DB)(nil)
+)
+
 type Storage interface {
 	// Alloc allocates a storage block large enough for storing size bytes
 	// and returns its offset or an error, if any.
@@ -55,7 +59,7 @@ type Storage interface {
 	Root() (int64, error)
 
 	// SetRoot sets the offset of the database root object.
-	SetRoot(root int) error
+	SetRoot(root int64) error
 
 	// Stat returns the os.FileInfo structure describing the storage. If
 	// there is an error, it will be of type *os.PathError.
@@ -89,10 +93,14 @@ type DB struct {
 
 func NewDB(s Storage) (*DB, error) { return &DB{s}, nil }
 
-func (db *DB) r8(off int64) (int64, error) {
+func (db *DB) r8(off int64) (int64, error) { return r8(db, off) }
+
+func (db *DB) w8(off, n int64) error { return w8(db, off, n) }
+
+func r8(s Storage, off int64) (int64, error) {
 	p := buffer.Get(8)
 	b := *p
-	if n, err := db.ReadAt(b, off); n != 8 {
+	if n, err := s.ReadAt(b, off); n != 8 {
 		if err == nil {
 			err = fmt.Errorf("short storage read")
 		}
@@ -107,14 +115,14 @@ func (db *DB) r8(off int64) (int64, error) {
 	return n, nil
 }
 
-func (db *DB) w8(off, n int64) error {
+func w8(s Storage, off, n int64) error {
 	p := buffer.Get(8)
 	b := *p
 	for i := range b {
 		b[i] = byte(n >> 56)
 		n <<= 8
 	}
-	_, err := db.WriteAt(b, off)
+	_, err := s.WriteAt(b, off)
 	buffer.Put(p)
 	return err
 }
