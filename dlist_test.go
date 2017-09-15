@@ -323,3 +323,213 @@ func testDListRemoveToFirst(t *testing.T, ts func(t testing.TB) (file.File, func
 		dListVerify(iTest, t, db, in, test.out)
 	}
 }
+
+func benchmarkNewDList(b *testing.B, ts func(t testing.TB) (file.File, func()), dataSize int64) {
+	db, f := tmpDB(b, ts)
+
+	defer f()
+
+	a := make([]int64, b.N)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		n, err := db.NewDList(dataSize)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		a[i] = n.Off
+	}
+	b.StopTimer()
+	for _, v := range a {
+		if err := db.Free(v); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkNewDList0(b *testing.B) {
+	b.Run("Mem", func(b *testing.B) { benchmarkNewDList(b, tmpMem, 0) })
+	b.Run("Map", func(b *testing.B) { benchmarkNewDList(b, tmpMap, 0) })
+	b.Run("File", func(b *testing.B) { benchmarkNewDList(b, tmpFile, 0) })
+}
+
+func benchmarkDListInsertAfter(b *testing.B, ts func(t testing.TB) (file.File, func()), dataSize int64) {
+	db, f := tmpDB(b, ts)
+
+	defer f()
+
+	r, err := db.NewDList(dataSize)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	a := make([]DList, b.N)
+	for i := range a {
+		n, err := db.NewDList(dataSize)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		a[i] = n
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if err := a[i].InsertAfter(r.Off); err != nil {
+			b.Fatal(err)
+		}
+	}
+	b.StopTimer()
+	if err := r.Free(r.Off); err != nil {
+		b.Fatal(err)
+	}
+	for _, v := range a {
+		if err := db.Free(v.Off); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkDListInsertAfter(b *testing.B) {
+	b.Run("Mem", func(b *testing.B) { benchmarkDListInsertAfter(b, tmpMem, 0) })
+	b.Run("Map", func(b *testing.B) { benchmarkDListInsertAfter(b, tmpMap, 0) })
+	b.Run("File", func(b *testing.B) { benchmarkDListInsertAfter(b, tmpFile, 0) })
+}
+
+func benchmarkDListInsertBefore(b *testing.B, ts func(t testing.TB) (file.File, func()), dataSize int64) {
+	db, f := tmpDB(b, ts)
+
+	defer f()
+
+	r, err := db.NewDList(dataSize)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	a := make([]DList, b.N)
+	for i := range a {
+		n, err := db.NewDList(dataSize)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		a[i] = n
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if err := a[i].InsertBefore(r.Off); err != nil {
+			b.Fatal(err)
+		}
+	}
+	b.StopTimer()
+	if err := r.Free(r.Off); err != nil {
+		b.Fatal(err)
+	}
+	for _, v := range a {
+		if err := db.Free(v.Off); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkDListInsertBefore(b *testing.B) {
+	b.Run("Mem", func(b *testing.B) { benchmarkDListInsertBefore(b, tmpMem, 0) })
+	b.Run("Map", func(b *testing.B) { benchmarkDListInsertBefore(b, tmpMap, 0) })
+	b.Run("File", func(b *testing.B) { benchmarkDListInsertBefore(b, tmpFile, 0) })
+}
+
+func benchmarkDListNext(b *testing.B, ts func(t testing.TB) (file.File, func()), dataSize int64) {
+	db, f := tmpDB(b, ts)
+
+	defer f()
+
+	n, err := db.NewDList(dataSize)
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := n.Next()
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+	b.StopTimer()
+	if err := n.Free(n.Off); err != nil {
+		b.Fatal(err)
+	}
+}
+
+func BenchmarkDListNext(b *testing.B) {
+	b.Run("Mem", func(b *testing.B) { benchmarkDListNext(b, tmpMem, 0) })
+	b.Run("Map", func(b *testing.B) { benchmarkDListNext(b, tmpMap, 0) })
+	b.Run("File", func(b *testing.B) { benchmarkDListNext(b, tmpFile, 0) })
+}
+
+func benchmarkDListPrev(b *testing.B, ts func(t testing.TB) (file.File, func()), dataSize int64) {
+	db, f := tmpDB(b, ts)
+
+	defer f()
+
+	n, err := db.NewDList(dataSize)
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := n.Prev()
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+	b.StopTimer()
+	if err := n.Free(n.Off); err != nil {
+		b.Fatal(err)
+	}
+}
+
+func BenchmarkDListPrev(b *testing.B) {
+	b.Run("Mem", func(b *testing.B) { benchmarkDListPrev(b, tmpMem, 0) })
+	b.Run("Map", func(b *testing.B) { benchmarkDListPrev(b, tmpMap, 0) })
+	b.Run("File", func(b *testing.B) { benchmarkDListPrev(b, tmpFile, 0) })
+}
+
+func benchmarkDListRemove(b *testing.B, ts func(t testing.TB) (file.File, func()), dataSize int64) {
+	db, f := tmpDB(b, ts)
+
+	defer f()
+
+	r, err := db.NewDList(dataSize)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	a := make([]DList, b.N)
+	for i := range a {
+		n, err := db.NewDList(dataSize)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		if err := n.InsertAfter(r.Off); err != nil {
+			b.Fatal(err)
+		}
+
+		a[i] = n
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if err := a[i].Remove(); err != nil {
+			b.Fatal(err)
+		}
+	}
+	b.StopTimer()
+	if err := r.Free(r.Off); err != nil {
+		b.Fatal(err)
+	}
+}
+
+func BenchmarkDListRemove(b *testing.B) {
+	b.Run("Mem", func(b *testing.B) { benchmarkDListRemove(b, tmpMem, 0) })
+	b.Run("Map", func(b *testing.B) { benchmarkDListRemove(b, tmpMap, 0) })
+	b.Run("File", func(b *testing.B) { benchmarkDListRemove(b, tmpFile, 0) })
+}

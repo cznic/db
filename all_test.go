@@ -97,7 +97,11 @@ func tmpMem(t testing.TB) (file.File, func()) {
 		t.Fatal(err)
 	}
 
-	return f, func() {}
+	return f, func() {
+		if err := f.Close(); err != nil {
+			t.Error(err)
+		}
+	}
 }
 
 func tmpMap(t testing.TB) (file.File, func()) {

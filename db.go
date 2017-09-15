@@ -2,7 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package db implements some data structures often found in databases.
+// Package db implements some data structures found in database
+// implementations.
 package db
 
 import (

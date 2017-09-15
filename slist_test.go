@@ -285,3 +285,188 @@ func testSListRemoveToEnd(t *testing.T, ts func(t testing.TB) (file.File, func()
 		sListVerify(iTest, t, db, in, test.out)
 	}
 }
+
+func benchmarkNewSList(b *testing.B, ts func(t testing.TB) (file.File, func()), dataSize int64) {
+	db, f := tmpDB(b, ts)
+
+	defer f()
+
+	a := make([]int64, b.N)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		n, err := db.NewSList(dataSize)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		a[i] = n.Off
+	}
+	b.StopTimer()
+	for _, v := range a {
+		if err := db.Free(v); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkNewSList0(b *testing.B) {
+	b.Run("Mem", func(b *testing.B) { benchmarkNewSList(b, tmpMem, 0) })
+	b.Run("Map", func(b *testing.B) { benchmarkNewSList(b, tmpMap, 0) })
+	b.Run("File", func(b *testing.B) { benchmarkNewSList(b, tmpFile, 0) })
+}
+
+func benchmarkSListInsertAfter(b *testing.B, ts func(t testing.TB) (file.File, func()), dataSize int64) {
+	db, f := tmpDB(b, ts)
+
+	defer f()
+
+	r, err := db.NewSList(dataSize)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	a := make([]SList, b.N)
+	for i := range a {
+		n, err := db.NewSList(dataSize)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		a[i] = n
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if err := a[i].InsertAfter(r.Off); err != nil {
+			b.Fatal(err)
+		}
+	}
+	b.StopTimer()
+	if err := r.Free(r.Off); err != nil {
+		b.Fatal(err)
+	}
+	for _, v := range a {
+		if err := db.Free(v.Off); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkSListInsertAfter(b *testing.B) {
+	b.Run("Mem", func(b *testing.B) { benchmarkSListInsertAfter(b, tmpMem, 0) })
+	b.Run("Map", func(b *testing.B) { benchmarkSListInsertAfter(b, tmpMap, 0) })
+	b.Run("File", func(b *testing.B) { benchmarkSListInsertAfter(b, tmpFile, 0) })
+}
+
+func benchmarkSListInsertBefore(b *testing.B, ts func(t testing.TB) (file.File, func()), dataSize int64) {
+	db, f := tmpDB(b, ts)
+
+	defer f()
+
+	r, err := db.NewSList(dataSize)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	a := make([]SList, b.N)
+	for i := range a {
+		n, err := db.NewSList(dataSize)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		a[i] = n
+	}
+	var prev int64
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if err := a[i].InsertBefore(prev, r.Off); err != nil {
+			b.Fatal(err)
+		}
+
+		prev = a[i].Off
+	}
+	b.StopTimer()
+	if err := r.Free(r.Off); err != nil {
+		b.Fatal(err)
+	}
+	for _, v := range a {
+		if err := db.Free(v.Off); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func BenchmarkSListInsertBefore(b *testing.B) {
+	b.Run("Mem", func(b *testing.B) { benchmarkSListInsertBefore(b, tmpMem, 0) })
+	b.Run("Map", func(b *testing.B) { benchmarkSListInsertBefore(b, tmpMap, 0) })
+	b.Run("File", func(b *testing.B) { benchmarkSListInsertBefore(b, tmpFile, 0) })
+}
+
+func benchmarkSListNext(b *testing.B, ts func(t testing.TB) (file.File, func()), dataSize int64) {
+	db, f := tmpDB(b, ts)
+
+	defer f()
+
+	n, err := db.NewSList(dataSize)
+	if err != nil {
+		b.Fatal(err)
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := n.Next()
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+	b.StopTimer()
+	if err := n.Free(n.Off); err != nil {
+		b.Fatal(err)
+	}
+}
+
+func BenchmarkSListNext(b *testing.B) {
+	b.Run("Mem", func(b *testing.B) { benchmarkSListNext(b, tmpMem, 0) })
+	b.Run("Map", func(b *testing.B) { benchmarkSListNext(b, tmpMap, 0) })
+	b.Run("File", func(b *testing.B) { benchmarkSListNext(b, tmpFile, 0) })
+}
+
+func benchmarkSListRemove(b *testing.B, ts func(t testing.TB) (file.File, func()), dataSize int64) {
+	db, f := tmpDB(b, ts)
+
+	defer f()
+
+	r, err := db.NewSList(dataSize)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	a := make([]SList, b.N)
+	for i := range a {
+		n, err := db.NewSList(dataSize)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		if err := n.InsertAfter(r.Off); err != nil {
+			b.Fatal(err)
+		}
+
+		a[i] = n
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		if err := a[i].Remove(r.Off); err != nil {
+			b.Fatal(err)
+		}
+	}
+	b.StopTimer()
+	if err := r.Free(r.Off); err != nil {
+		b.Fatal(err)
+	}
+}
+
+func BenchmarkSListRemove(b *testing.B) {
+	b.Run("Mem", func(b *testing.B) { benchmarkSListRemove(b, tmpMem, 0) })
+	b.Run("Map", func(b *testing.B) { benchmarkSListRemove(b, tmpMap, 0) })
+	b.Run("File", func(b *testing.B) { benchmarkSListRemove(b, tmpFile, 0) })
+}
