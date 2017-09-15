@@ -109,12 +109,12 @@ func (l DList) InsertBefore(off int64) error {
 	}
 
 	if prev != 0 {
-		n, err := l.OpenDList(prev)
+		p, err := l.OpenDList(prev)
 		if err != nil {
 			return err
 		}
 
-		if err := n.setNext(l.Off); err != nil {
+		if err := p.setNext(l.Off); err != nil {
 			return err
 		}
 	}
@@ -124,4 +124,123 @@ func (l DList) InsertBefore(off int64) error {
 	}
 
 	return l.setNext(n.Off)
+}
+
+// Remove removes l from a list.
+func (l DList) Remove() error {
+	prev, err := l.Prev()
+	if err != nil {
+		return err
+	}
+
+	next, err := l.Next()
+	if err != nil {
+		return err
+	}
+
+	var p, n DList
+	if prev != 0 {
+		if p, err = l.OpenDList(prev); err != nil {
+			return err
+		}
+	}
+	if next != 0 {
+		if n, err = l.OpenDList(next); err != nil {
+			return err
+		}
+	}
+
+	switch {
+	case prev == 0:
+		switch {
+		case next == 0:
+			// nop
+		default:
+			if err = n.setPrev(0); err != nil {
+				return err
+			}
+		}
+	default:
+		switch {
+		case next == 0:
+			if err = p.setNext(0); err != nil {
+				return err
+			}
+		default:
+			if err := p.setNext(next); err != nil {
+				return err
+			}
+
+			if err := n.setPrev(prev); err != nil {
+				return err
+			}
+		}
+	}
+	return l.Free(l.Off)
+}
+
+// RemoveToLast removes all nodes from a list starting at l to the end of the
+// list.
+func (l DList) RemoveToLast() error {
+	prev, err := l.Prev()
+	if err != nil {
+		return err
+	}
+
+	if prev != 0 {
+		p, err := l.OpenDList(prev)
+		if err != nil {
+			return err
+		}
+
+		if err := p.setNext(0); err != nil {
+			return err
+		}
+	}
+	for l.Off != 0 {
+		next, err := l.Next()
+		if err != nil {
+			return err
+		}
+
+		if err := l.Free(l.Off); err != nil {
+			return err
+		}
+
+		l.Off = next
+	}
+	return nil
+}
+
+// RemoveToFirst removes all nodes from a list starting at first list node, up
+// to and including l.
+func (l DList) RemoveToFirst() error {
+	next, err := l.Next()
+	if err != nil {
+		return err
+	}
+
+	if next != 0 {
+		n, err := l.OpenDList(next)
+		if err != nil {
+			return err
+		}
+
+		if err := n.setPrev(0); err != nil {
+			return err
+		}
+	}
+	for l.Off != 0 {
+		prev, err := l.Prev()
+		if err != nil {
+			return err
+		}
+
+		if err := l.Free(l.Off); err != nil {
+			return err
+		}
+
+		l.Off = prev
+	}
+	return nil
 }

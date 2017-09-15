@@ -87,7 +87,7 @@ func dListVerify(iTest int, t testing.TB, db *testDB, in []DList, out []int) {
 
 func TestDList(t *testing.T) {
 	use(t.Run("Mem", func(t *testing.T) { testDList(t, tmpMem) }) &&
-		t.Run("Cache", func(t *testing.T) { testDList(t, tmpCache) }) &&
+		t.Run("Map", func(t *testing.T) { testDList(t, tmpMap) }) &&
 		t.Run("File", func(t *testing.T) { testDList(t, tmpFile) }))
 }
 
@@ -113,7 +113,7 @@ func testDList(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 
 func TestDListInsertAfter(t *testing.T) {
 	use(t.Run("Mem", func(t *testing.T) { testDListInsertAfter(t, tmpMem) }) &&
-		t.Run("Cache", func(t *testing.T) { testDListInsertAfter(t, tmpCache) }) &&
+		t.Run("Map", func(t *testing.T) { testDListInsertAfter(t, tmpMap) }) &&
 		t.Run("File", func(t *testing.T) { testDListInsertAfter(t, tmpFile) }))
 }
 
@@ -161,7 +161,7 @@ func testDListInsertAfter(t *testing.T, ts func(t testing.TB) (file.File, func()
 
 func TestDListInsertBefore(t *testing.T) {
 	use(t.Run("Mem", func(t *testing.T) { testDListInsertBefore(t, tmpMem) }) &&
-		t.Run("Cache", func(t *testing.T) { testDListInsertBefore(t, tmpCache) }) &&
+		t.Run("Map", func(t *testing.T) { testDListInsertBefore(t, tmpMap) }) &&
 		t.Run("File", func(t *testing.T) { testDListInsertBefore(t, tmpFile) }))
 }
 
@@ -203,6 +203,123 @@ func testDListInsertBefore(t *testing.T, ts func(t testing.TB) (file.File, func(
 		}
 
 		in = append(in[:i], append([]DList{n}, in[i:]...)...)
+		dListVerify(iTest, t, db, in, test.out)
+	}
+}
+
+func TestDListRemove(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testDListRemove(t, tmpMem) }) &&
+		t.Run("Map", func(t *testing.T) { testDListRemove(t, tmpMap) }) &&
+		t.Run("File", func(t *testing.T) { testDListRemove(t, tmpFile) }))
+}
+
+func testDListRemove(t *testing.T, ts func(t testing.TB) (file.File, func())) {
+	db, f := tmpDB(t, ts)
+
+	defer f()
+
+	tab := []struct {
+		in    []int
+		index int
+		out   []int
+	}{
+		{[]int{10}, 0, nil},
+		{[]int{10, 20}, 0, []int{20}},
+		{[]int{10, 20}, 1, []int{10}},
+		{[]int{10, 20, 30}, 0, []int{20, 30}},
+		{[]int{10, 20, 30}, 1, []int{10, 30}},
+		{[]int{10, 20, 30}, 2, []int{10, 20}},
+		{[]int{10, 20, 30, 40}, 0, []int{20, 30, 40}},
+		{[]int{10, 20, 30, 40}, 1, []int{10, 30, 40}},
+		{[]int{10, 20, 30, 40}, 2, []int{10, 20, 40}},
+		{[]int{10, 20, 30, 40}, 3, []int{10, 20, 30}},
+	}
+	for iTest, test := range tab {
+		in := dListFill(t, db, test.in)
+		i := test.index
+		if err := in[i].Remove(); err != nil {
+			t.Fatal(iTest)
+		}
+
+		in = append(in[:i], in[i+1:]...)
+		dListVerify(iTest, t, db, in, test.out)
+	}
+}
+
+func TestDListRemoveToEnd(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testDListRemoveToEnd(t, tmpMem) }) &&
+		t.Run("Map", func(t *testing.T) { testDListRemoveToEnd(t, tmpMap) }) &&
+		t.Run("File", func(t *testing.T) { testDListRemoveToEnd(t, tmpFile) }))
+}
+
+func testDListRemoveToEnd(t *testing.T, ts func(t testing.TB) (file.File, func())) {
+	db, f := tmpDB(t, ts)
+
+	defer f()
+
+	tab := []struct {
+		in    []int
+		index int
+		out   []int
+	}{
+		{[]int{10}, 0, nil},
+		{[]int{10, 20}, 0, nil},
+		{[]int{10, 20}, 1, []int{10}},
+		{[]int{10, 20, 30}, 0, nil},
+		{[]int{10, 20, 30}, 1, []int{10}},
+		{[]int{10, 20, 30}, 2, []int{10, 20}},
+		{[]int{10, 20, 30, 40}, 0, nil},
+		{[]int{10, 20, 30, 40}, 1, []int{10}},
+		{[]int{10, 20, 30, 40}, 2, []int{10, 20}},
+		{[]int{10, 20, 30, 40}, 3, []int{10, 20, 30}},
+	}
+	for iTest, test := range tab {
+		in := dListFill(t, db, test.in)
+		i := test.index
+		if err := in[i].RemoveToLast(); err != nil {
+			t.Fatal(iTest)
+		}
+
+		in = in[:i]
+		dListVerify(iTest, t, db, in, test.out)
+	}
+}
+
+func TestDListRemoveToFirst(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testDListRemoveToFirst(t, tmpMem) }) &&
+		t.Run("Map", func(t *testing.T) { testDListRemoveToFirst(t, tmpMap) }) &&
+		t.Run("File", func(t *testing.T) { testDListRemoveToFirst(t, tmpFile) }))
+}
+
+func testDListRemoveToFirst(t *testing.T, ts func(t testing.TB) (file.File, func())) {
+	db, f := tmpDB(t, ts)
+
+	defer f()
+
+	tab := []struct {
+		in    []int
+		index int
+		out   []int
+	}{
+		{[]int{10}, 0, nil},
+		{[]int{10, 20}, 0, []int{20}},
+		{[]int{10, 20}, 1, nil},
+		{[]int{10, 20, 30}, 0, []int{20, 30}},
+		{[]int{10, 20, 30}, 1, []int{30}},
+		{[]int{10, 20, 30}, 2, nil},
+		{[]int{10, 20, 30, 40}, 0, []int{20, 30, 40}},
+		{[]int{10, 20, 30, 40}, 1, []int{30, 40}},
+		{[]int{10, 20, 30, 40}, 2, []int{40}},
+		{[]int{10, 20, 30, 40}, 3, nil},
+	}
+	for iTest, test := range tab {
+		in := dListFill(t, db, test.in)
+		i := test.index
+		if err := in[i].RemoveToFirst(); err != nil {
+			t.Fatal(iTest)
+		}
+
+		in = in[i+1:]
 		dListVerify(iTest, t, db, in, test.out)
 	}
 }

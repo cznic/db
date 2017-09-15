@@ -76,7 +76,7 @@ func sListVerify(iTest int, t testing.TB, db *testDB, in []SList, out []int) {
 
 func TestSList(t *testing.T) {
 	use(t.Run("Mem", func(t *testing.T) { testSList(t, tmpMem) }) &&
-		t.Run("Cache", func(t *testing.T) { testSList(t, tmpCache) }) &&
+		t.Run("Map", func(t *testing.T) { testSList(t, tmpMap) }) &&
 		t.Run("File", func(t *testing.T) { testSList(t, tmpFile) }))
 }
 
@@ -102,7 +102,7 @@ func testSList(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 
 func TestSListInsertAfter(t *testing.T) {
 	use(t.Run("Mem", func(t *testing.T) { testSListInsertAfter(t, tmpMem) }) &&
-		t.Run("Cache", func(t *testing.T) { testSListInsertAfter(t, tmpCache) }) &&
+		t.Run("Map", func(t *testing.T) { testSListInsertAfter(t, tmpMap) }) &&
 		t.Run("File", func(t *testing.T) { testSListInsertAfter(t, tmpFile) }))
 }
 
@@ -150,7 +150,7 @@ func testSListInsertAfter(t *testing.T, ts func(t testing.TB) (file.File, func()
 
 func TestSListInsertBefore(t *testing.T) {
 	use(t.Run("Mem", func(t *testing.T) { testSListInsertBefore(t, tmpMem) }) &&
-		t.Run("Cache", func(t *testing.T) { testSListInsertBefore(t, tmpCache) }) &&
+		t.Run("Map", func(t *testing.T) { testSListInsertBefore(t, tmpMap) }) &&
 		t.Run("File", func(t *testing.T) { testSListInsertBefore(t, tmpFile) }))
 }
 
@@ -202,7 +202,7 @@ func testSListInsertBefore(t *testing.T, ts func(t testing.TB) (file.File, func(
 
 func TestSListRemove(t *testing.T) {
 	use(t.Run("Mem", func(t *testing.T) { testSListRemove(t, tmpMem) }) &&
-		t.Run("Cache", func(t *testing.T) { testSListRemove(t, tmpCache) }) &&
+		t.Run("Map", func(t *testing.T) { testSListRemove(t, tmpMap) }) &&
 		t.Run("File", func(t *testing.T) { testSListRemove(t, tmpFile) }))
 }
 
@@ -243,13 +243,13 @@ func testSListRemove(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 	}
 }
 
-func TestSListRemoveAll(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testSListRemoveAll(t, tmpMem) }) &&
-		t.Run("Cache", func(t *testing.T) { testSListRemoveAll(t, tmpCache) }) &&
-		t.Run("File", func(t *testing.T) { testSListRemoveAll(t, tmpFile) }))
+func TestSListRemoveToEnd(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testSListRemoveToEnd(t, tmpMem) }) &&
+		t.Run("Map", func(t *testing.T) { testSListRemoveToEnd(t, tmpMap) }) &&
+		t.Run("File", func(t *testing.T) { testSListRemoveToEnd(t, tmpFile) }))
 }
 
-func testSListRemoveAll(t *testing.T, ts func(t testing.TB) (file.File, func())) {
+func testSListRemoveToEnd(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 	db, f := tmpDB(t, ts)
 
 	defer f()
@@ -277,7 +277,7 @@ func testSListRemoveAll(t *testing.T, ts func(t testing.TB) (file.File, func()))
 		if i != 0 {
 			prev = in[i-1].Off
 		}
-		if err := in[i].RemoveAll(prev); err != nil {
+		if err := in[i].RemoveToLast(prev); err != nil {
 			t.Fatal(iTest)
 		}
 

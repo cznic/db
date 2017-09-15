@@ -78,12 +78,12 @@ func (l SList) InsertBefore(prev, off int64) error {
 	}
 
 	if prev != 0 {
-		n, err := l.OpenSList(prev)
+		p, err := l.OpenSList(prev)
 		if err != nil {
 			return err
 		}
 
-		if err := n.setNext(l.Off); err != nil {
+		if err := p.setNext(l.Off); err != nil {
 			return err
 		}
 	}
@@ -99,29 +99,29 @@ func (l SList) Remove(prev int64) error {
 			return err
 		}
 
-		n, err := l.OpenSList(prev)
+		p, err := l.OpenSList(prev)
 		if err != nil {
 			return err
 		}
 
-		if err := n.setNext(next); err != nil {
+		if err := p.setNext(next); err != nil {
 			return err
 		}
 	}
 	return l.Free(l.Off)
 }
 
-// RemoveAll removes all nodes from a list starting at l. If l is linked to
-// from an SList node at prev, the prev argument must reflect that, otherwise
-// prev must be zero.
-func (l SList) RemoveAll(prev int64) error {
+// RemoveToLast removes all nodes from a list starting at l to the end of the
+// list. If l is linked to from an SList node at prev, the prev argument must
+// reflect that, otherwise prev must be zero.
+func (l SList) RemoveToLast(prev int64) error {
 	if prev != 0 {
-		n, err := l.OpenSList(prev)
+		p, err := l.OpenSList(prev)
 		if err != nil {
 			return err
 		}
 
-		if err := n.setNext(0); err != nil {
+		if err := p.setNext(0); err != nil {
 			return err
 		}
 	}

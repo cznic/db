@@ -15,7 +15,6 @@ import (
 	"testing"
 
 	"github.com/cznic/file"
-	ifile "github.com/cznic/internal/file"
 )
 
 func caller(s string, va ...interface{}) {
@@ -93,7 +92,7 @@ func (s *storage) Root() (int64, error) {
 }
 
 func tmpMem(t testing.TB) (file.File, func()) {
-	f, err := ifile.OpenMem("")
+	f, err := file.Mem("")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +100,7 @@ func tmpMem(t testing.TB) (file.File, func()) {
 	return f, func() {}
 }
 
-func tmpCache(t testing.TB) (file.File, func()) {
+func tmpMap(t testing.TB) (file.File, func()) {
 	dir, err := ioutil.TempDir("", "file-test-")
 	if err != nil {
 		t.Fatal(err)
@@ -113,7 +112,7 @@ func tmpCache(t testing.TB) (file.File, func()) {
 		t.Fatal(err)
 	}
 
-	f, err := ifile.Open(f0)
+	f, err := file.Map(f0)
 	if err != nil {
 		t.Fatal(err)
 	}
