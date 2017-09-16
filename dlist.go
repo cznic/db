@@ -12,8 +12,8 @@ const (
 
 // DList is a node of a doubly linked list.
 type DList struct {
-	*DB
-	Off int64
+	*DB       // R/O
+	Off int64 // R/O
 }
 
 // NewDList returns a newly allocated DList or an error, if any. The datasize

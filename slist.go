@@ -11,8 +11,8 @@ const (
 
 // SList is a node of a single linked list.
 type SList struct {
-	*DB
-	Off int64
+	*DB       // R/O
+	Off int64 // R/O
 }
 
 // NewSList returns a newly allocated SList or an error, if any. The datasize
