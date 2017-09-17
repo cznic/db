@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	oBTCount = 8 * iota // int64	0	8
+	oBTLen   = 8 * iota // int64	0	8
 	oBTFirst            // int64	8	8
 	oBTLast             // int64	16	8
 	oBTKD               // int64	24	8
@@ -23,10 +23,10 @@ const (
 )
 
 type BTree struct {
-	*DB         // R/O
-	Off   int64 // R/O
-	SzKey int64 // R/O
-	SzVal int64 // R/O
+	*DB
+	Off   int64
+	SzKey int64
+	SzVal int64
 	kd    int
 	kx    int
 }
@@ -103,10 +103,10 @@ func (db *DB) OpenBTree(off int64) (*BTree, error) {
 	return &BTree{DB: db, Off: off, kd: int(kd), kx: int(kx), SzKey: szKey, SzVal: szVal}, nil
 }
 
-func (t *BTree) setCount(n int64) error { return t.w8(t.Off+oBTCount, n) }
 func (t *BTree) setFirst(n int64) error { return t.w8(t.Off+oBTFirst, n) }
 func (t *BTree) setLast(n int64) error  { return t.w8(t.Off+oBTLast, n) }
+func (t *BTree) setLen(n int64) error   { return t.w8(t.Off+oBTLen, n) }
 
-func (t *BTree) Count() (int64, error) { return t.r8(t.Off + oBTCount) }
 func (t *BTree) First() (int64, error) { return t.r8(t.Off + oBTFirst) }
 func (t *BTree) Last() (int64, error)  { return t.r8(t.Off + oBTLast) }
+func (t *BTree) Len() (int64, error)   { return t.r8(t.Off + oBTLen) }
