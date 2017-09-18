@@ -91,9 +91,28 @@ type DB struct {
 // NewDB returns a newly created DB backed by s or an error, if any.
 func NewDB(s Storage) (*DB, error) { return &DB{s}, nil }
 
+func (db *DB) r4(off int64) (int, error)   { return r4(db, off) }
 func (db *DB) r8(off int64) (int64, error) { return r8(db, off) }
+func (db *DB) w4(off int64, n int) error   { return w4(db, off, n) }
+func (db *DB) w8(off, n int64) error       { return w8(db, off, n) }
 
-func (db *DB) w8(off, n int64) error { return w8(db, off, n) }
+func r4(s Storage, off int64) (int, error) {
+	p := buffer.Get(4)
+	b := *p
+	if n, err := s.ReadAt(b, off); n != 4 {
+		if err == nil {
+			err = fmt.Errorf("short storage read")
+		}
+		return 0, err
+	}
+
+	var n int
+	for _, v := range b {
+		n = n<<8 | int(v)
+	}
+	buffer.Put(p)
+	return n, nil
+}
 
 func r8(s Storage, off int64) (int64, error) {
 	p := buffer.Get(8)
@@ -111,6 +130,18 @@ func r8(s Storage, off int64) (int64, error) {
 	}
 	buffer.Put(p)
 	return n, nil
+}
+
+func w4(s Storage, off int64, n int) error {
+	p := buffer.Get(4)
+	b := *p
+	for i := range b {
+		b[i] = byte(n >> 24)
+		n <<= 8
+	}
+	_, err := s.WriteAt(b, off)
+	buffer.Put(p)
+	return err
 }
 
 func w8(s Storage, off, n int64) error {
