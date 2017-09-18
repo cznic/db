@@ -81,7 +81,7 @@ func testBTreeGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 
 	defer f()
 
-	tr, err := db.NewBTree(0, 0, 8, 8)
+	tr, err := db.NewBTree(16, 16, 8, 8)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -113,7 +113,7 @@ func testBTreeSetGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 
 	defer f()
 
-	tr, err := db.NewBTree(0, 0, 8, 8)
+	tr, err := db.NewBTree(16, 16, 8, 8)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -181,4 +181,82 @@ func TestBTreeSetGet0(t *testing.T) {
 	use(t.Run("Mem", func(t *testing.T) { testBTreeSetGet0(t, tmpMem) }) &&
 		t.Run("Map", func(t *testing.T) { testBTreeSetGet0(t, tmpMap) }) &&
 		t.Run("File", func(t *testing.T) { testBTreeSetGet0(t, tmpFile) }))
+}
+
+func testBTreeSetGet1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
+	const N = 1 << 4 //TODO 40000
+	for _, x := range []int{0, -1, 0x555555, 0xaaaaaa, 0x333333, 0xcccccc, 0x314159} {
+		func() {
+			db, f := tmpDB(t, ts)
+
+			defer f()
+
+			tr, err := db.NewBTree(16, 16, 8, 8)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			defer func() {
+				if err := tr.Remove(nil); err != nil {
+					t.Fatal(err)
+				}
+			}()
+
+			set := tr.set
+			a := make([]int, N)
+			for i := range a {
+				a[i] = (i ^ x) << 1
+			}
+			for i, k := range a {
+				set(t, k, k^x)
+				if g, e := tr.len(t), int64(i+1); g != e {
+					t.Fatal(i, g, e)
+				}
+			}
+
+			for i, k := range a {
+				v, ok := tr.get(t, k)
+				if !ok {
+					t.Fatal(i, k, v, ok)
+				}
+
+				if g, e := v, k^x; g != e {
+					t.Fatal(i, g, e)
+				}
+
+				k |= 1
+				_, ok = tr.get(t, k)
+				if ok {
+					t.Fatal(i, k)
+				}
+			}
+
+			for _, k := range a {
+				tr.set(t, k, (k^x)+42)
+			}
+
+			for i, k := range a {
+				v, ok := tr.get(t, k)
+				if !ok {
+					t.Fatal(i, k, v, ok)
+				}
+
+				if g, e := v, k^x+42; g != e {
+					t.Fatal(i, g, e)
+				}
+
+				k |= 1
+				_, ok = tr.get(t, k)
+				if ok {
+					t.Fatal(i, k)
+				}
+			}
+		}()
+	}
+}
+
+func TestBTreeSetGet1(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testBTreeSetGet1(t, tmpMem) }) &&
+		t.Run("Map", func(t *testing.T) { testBTreeSetGet1(t, tmpMap) }) &&
+		t.Run("File", func(t *testing.T) { testBTreeSetGet1(t, tmpFile) }))
 }

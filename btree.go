@@ -8,11 +8,13 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/cznic/internal/buffer"
 	"github.com/cznic/mathutil"
 )
 
 var (
 	_ btPage = (*btDPage)(nil)
+	_ btPage = (*btXPage)(nil)
 )
 
 const (
@@ -117,7 +119,7 @@ func (db *DB) OpenBTree(off int64) (*BTree, error) {
 		return nil, err
 	}
 
-	return &BTree{DB: db, Off: off, kd: int(kd), kx: int(kx), SzKey: szKey, SzVal: szVal}, nil
+	return &BTree{DB: db, Off: off, kd: kd, kx: kx, SzKey: szKey, SzVal: szVal}, nil
 }
 
 func (t *BTree) openDPage(off int64) (btDPage, error) { return btDPage{t, off}, nil }
@@ -200,6 +202,13 @@ func (t *BTree) Get(cmp func(int64) (int, error)) (int64, bool, error) {
 			}
 		}
 
+		switch x := q.(type) {
+		case btDPage:
+			return 0, false, nil
+		default:
+			panic(fmt.Errorf("%T.Get: internal error: %T", t, x))
+		}
+
 		//TODO		switch x := q.(type) {
 		//TODO		case *x:
 		//TODO			q = x.x[i].ch
@@ -259,6 +268,7 @@ func (t *BTree) Set(cmp func(int64) (int, error)) (int64, int64, error) {
 		return 0, 0, err
 	}
 
+	var p btXPage
 	for {
 		i, ok, err := q.find(cmp)
 		if err != nil {
@@ -266,7 +276,6 @@ func (t *BTree) Set(cmp func(int64) (int, error)) (int64, int64, error) {
 		}
 
 		if ok {
-			_ = pi
 			switch x := q.(type) {
 			case btDPage:
 				return x.koff(i), x.voff(i), nil
@@ -299,8 +308,9 @@ func (t *BTree) Set(cmp func(int64) (int, error)) (int64, int64, error) {
 					return 0, 0, err
 				}
 			default:
-				panic("TODO")
-				//TODO t.overflow(p, x, pi, i, k, v)
+				if x, i, err = x.overflow(&p, pi, i); err != nil {
+					return 0, 0, err
+				}
 			}
 			return x.koff(i), x.voff(i), nil
 		default:
@@ -399,6 +409,36 @@ func (d btDPage) clr(free func(int64, int64) error) error {
 	return d.Free(d.off)
 }
 
+func (d *btDPage) copy(s *btDPage, di, si, n int) error {
+	switch nb := (d.SzKey + d.SzVal) * int64(n); {
+	case nb > mathutil.MaxInt:
+		panic("TODO")
+	default:
+		nb := int(nb)
+		p := buffer.Get(nb)
+		if nr, err := s.ReadAt(*p, s.koff(si)); nr != nb {
+			if err == nil {
+				panic("internal error")
+			}
+
+			buffer.Put(p)
+			return err
+		}
+
+		if nw, err := d.WriteAt(*p, d.koff(di)); nw != nb {
+			if err == nil {
+				panic("internal error")
+			}
+
+			buffer.Put(p)
+			return err
+		}
+
+		buffer.Put(p)
+	}
+	return nil
+}
+
 func (d btDPage) find(cmp func(off int64) (int, error)) (int, bool, error) {
 	h, err := d.len()
 	if err != nil {
@@ -430,7 +470,9 @@ func (d *btDPage) insert(i int) error {
 	}
 
 	if i < c {
-		panic("TODO")
+		if err := d.copy(d, i+1, i, c-i); err != nil {
+			return err
+		}
 	}
 
 	if err := d.setLen(c + 1); err != nil {
@@ -443,4 +485,153 @@ func (d *btDPage) insert(i int) error {
 	}
 
 	return d.BTree.setLen(n + 1)
+}
+
+func (d *btDPage) overflow(p *btXPage, pi, i int) (btDPage, int, error) {
+	l, r, err := p.siblings(pi)
+	if err != nil {
+		return btDPage{}, 0, err
+	}
+
+	if l.off != 0 {
+		panic("TODO")
+	}
+	//TODO 	if l != nil && l.c < 2*kd && i != 0 {
+	//TODO 		l.mvL(d, 1)
+	//TODO 		t.insert(d, i-1, k, v)
+	//TODO 		p.x[pi-1].k = d.d[0].k
+	//TODO 		return
+	//TODO 	}
+
+	if r.off != 0 {
+		panic("TODO")
+	}
+	//TODO 	if r != nil && r.c < 2*kd {
+	//TODO 		if i < 2*kd {
+	//TODO 			d.mvR(r, 1)
+	//TODO 			t.insert(d, i, k, v)
+	//TODO 			p.x[pi].k = r.d[0].k
+	//TODO 			return
+	//TODO 		}
+	//TODO
+	//TODO 		t.insert(r, 0, k, v)
+	//TODO 		p.x[pi].k = k
+	//TODO 		return
+	//TODO 	}
+
+	return d.split(p, pi, i)
+}
+
+func (d *btDPage) split(p *btXPage, pi, i int) (q btDPage, j int, err error) {
+	var r btDPage
+	if r, err = newBTDPage(d.BTree); err != nil {
+		return q, j, err
+	}
+
+	_ = r
+	n, err := d.next()
+	if err != nil {
+		return q, j, err
+	}
+
+	if n != 0 {
+		panic("TODO")
+		//TODO		r.n = d.n
+		//TODO		r.n.p = r
+	} else {
+		if err := d.setLast(r.off); err != nil {
+			return q, j, err
+		}
+	}
+
+	if err := d.setNext(r.off); err != nil {
+		return q, j, err
+	}
+
+	if err := r.setPrev(d.off); err != nil {
+		return q, j, err
+	}
+
+	//TODO	copy(r.d[:], d.d[kd:2*kd])
+	if err := r.copy(d, 0, d.kd, 2*d.kd-d.kd); err != nil {
+		return q, j, err
+	}
+
+	//TODO	for i := range d.d[kd:] {
+	//TODO		d.d[kd+i] = zde
+	//TODO	}
+	//TODO	d.c = kd
+	//TODO	r.c = kd
+
+	if err := d.setLen(d.kd); err != nil {
+		return q, j, err
+	}
+
+	if err := r.setLen(d.kd); err != nil {
+		return q, j, err
+	}
+
+	var done bool
+	if i > d.kd {
+		done = true
+		//TODO		t.insert(r, i-kd, k, v)
+
+		q = r
+		j = i - d.kd
+		if err := q.insert(j); err != nil {
+			return btDPage{}, 0, err
+		}
+	}
+
+	_ = done
+	if pi >= 0 {
+		panic("TODO")
+		//p.insert(pi, r.d[0].k, r)
+	} else {
+		panic("TODO")
+		//t.r = newX(d).insert(0, r.d[0].k, r)
+	}
+	panic("TODO")
+	//TODO	if done {
+	//TODO		return
+	//TODO	}
+	//TODO
+	//TODO	t.insert(d, i, k, v)
+}
+
+const (
+	oBTXPageTag   = 8 * iota // int32		0	4
+	oBTXPageLen              // int32		8	4
+	oBTXPageItems            // [2*kx+2]item	32	(2*kx+2)*16, item is struct{child, dpage int64}
+)
+
+type btXPage struct {
+	*BTree
+	off int64
+}
+
+func newBTXPage(t *BTree) (btDPage, error) { panic("TODO") }
+
+func (x *btXPage) setLen(n int) error                                      { return x.w4(x.off+oBTXPageLen, n) }
+func (x *btXPage) setTag(n int) error                                      { return x.w4(x.off+oBTXPageTag, n) }
+func (x *btXPage) tag() (int, error)                                       { return x.r4(x.off + oBTXPageTag) }
+func (x btXPage) clr(free func(int64, int64) error) error                  { panic("TODO") }
+func (x btXPage) find(cmp func(off int64) (int, error)) (int, bool, error) { panic("TODO") }
+func (x btXPage) len() (int, error)                                        { return x.r4(x.off + oBTXPageLen) }
+
+func (x *btXPage) siblings(i int) (l, r btDPage, err error) {
+	if x.off == 0 {
+		return btDPage{}, btDPage{}, nil
+	}
+
+	panic("TODO")
+	//TODO	if i >= 0 {
+	//TODO		if i > 0 {
+	//TODO			l = q.x[i-1].ch.(*d)
+	//TODO		}
+	//TODO		if i < q.c {
+	//TODO			r = q.x[i+1].ch.(*d)
+	//TODO		}
+	//TODO	}
+	//TODO	return
 }
