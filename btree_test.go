@@ -8,21 +8,25 @@ import (
 	"testing"
 
 	"github.com/cznic/file"
-	"github.com/cznic/mathutil"
 )
 
 func (t *BTree) cmp(n int) func(off int64) (int, error) {
 	return func(off int64) (int, error) {
-		m, err := t.r8(off)
+		p, err := t.r8(off)
 		if err != nil {
 			return 0, err
 		}
 
-		if int64(n) < m {
+		m, err := t.r4(p)
+		if err != nil {
+			return 0, err
+		}
+
+		if n < m {
 			return -1, nil
 		}
 
-		if int64(n) > m {
+		if n > m {
 			return 1, nil
 		}
 
@@ -49,29 +53,80 @@ func (t *BTree) get(tb testing.TB, k int) (int, bool) {
 		return 0, false
 	}
 
-	v, err := t.r8(off)
+	p, err := t.r8(off)
 	if err != nil {
 		tb.Fatal(err)
 	}
 
-	if v < mathutil.MinInt || v > mathutil.MaxInt {
-		tb.Fatalf("%T.get: corrupted database", t)
+	n, err := t.r4(p)
+	if err != nil {
+		tb.Fatal(err)
 	}
 
-	return int(v), true
+	return n, true
 }
 
 func (t *BTree) set(tb testing.TB, k, v int) {
-	koff, voff, err := t.Set(t.cmp(k))
+	kalloc := true
+	koff, voff, err := t.Set(t.cmp(k), func(off int64) error {
+		p, err := t.r8(off)
+		if err != nil {
+			return err
+		}
+
+		kalloc = false
+		return t.Free(p)
+	})
 	if err != nil {
 		tb.Fatal(err)
 	}
 
-	if err := t.w8(koff, int64(k)); err != nil {
+	var p, q int64
+	if kalloc {
+		if p, err = t.Alloc(4); err != nil {
+			tb.Fatal(err)
+		}
+
+		if err := t.w4(p, k); err != nil {
+			tb.Fatal(err)
+		}
+
+		if err := t.w8(koff, p); err != nil {
+			tb.Fatal(err)
+		}
+	}
+
+	if q, err = t.Alloc(4); err != nil {
 		tb.Fatal(err)
 	}
 
-	if err := t.w8(voff, int64(v)); err != nil {
+	if err := t.w4(q, v); err != nil {
+		tb.Fatal(err)
+	}
+
+	if err := t.w8(voff, q); err != nil {
+		tb.Fatal(err)
+	}
+}
+
+func (t *BTree) remove(tb testing.TB) {
+	if err := t.Remove(func(k, v int64) error {
+		p, err := t.r8(k)
+		if err != nil {
+			return err
+		}
+
+		if err := t.Free(p); err != nil {
+			return err
+		}
+
+		q, err := t.r8(v)
+		if err != nil {
+			return err
+		}
+
+		return t.Free(q)
+	}); err != nil {
 		tb.Fatal(err)
 	}
 }
@@ -86,11 +141,7 @@ func testBTreeGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 		t.Fatal(err)
 	}
 
-	defer func() {
-		if err := tr.Remove(nil); err != nil {
-			t.Fatal(err)
-		}
-	}()
+	defer tr.remove(t)
 
 	if g, e := tr.len(t), int64(0); g != e {
 		t.Fatal(g, e)
@@ -118,11 +169,7 @@ func testBTreeSetGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 		t.Fatal(err)
 	}
 
-	defer func() {
-		if err := tr.Remove(nil); err != nil {
-			t.Fatal(err)
-		}
-	}()
+	defer tr.remove(t)
 
 	set := tr.set
 	set(t, 42, 314)
@@ -196,11 +243,7 @@ func testBTreeSetGet1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 				t.Fatal(err)
 			}
 
-			defer func() {
-				if err := tr.Remove(nil); err != nil {
-					t.Fatal(err)
-				}
-			}()
+			defer tr.remove(t)
 
 			set := tr.set
 			a := make([]int, N)
@@ -217,7 +260,7 @@ func testBTreeSetGet1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 			for i, k := range a {
 				v, ok := tr.get(t, k)
 				if !ok {
-					t.Fatal(i, k, v, ok)
+					t.Fatal(i, k, ok)
 				}
 
 				if g, e := v, k^x; g != e {

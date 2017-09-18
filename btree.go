@@ -231,7 +231,7 @@ func (t *BTree) Remove(free func(k, v int64) error) error {
 	return t.Free(t.Off)
 }
 
-func (t *BTree) Set(cmp func(int64) (int, error)) (int64, int64, error) {
+func (t *BTree) Set(cmp func(int64) (int, error), free func(int64) error) (int64, int64, error) {
 	pi := -1
 	r, err := t.root()
 	if err != nil {
@@ -278,7 +278,13 @@ func (t *BTree) Set(cmp func(int64) (int, error)) (int64, int64, error) {
 		if ok {
 			switch x := q.(type) {
 			case btDPage:
-				return x.koff(i), x.voff(i), nil
+				koff := x.koff(i)
+				voff := x.voff(i)
+				if err := free(voff); err != nil {
+					return 0, 0, err
+				}
+
+				return koff, voff, nil
 			//TODO			case *x:
 			//TODO				i++
 			//TODO				if x.c > 2*kx {

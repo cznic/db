@@ -106,12 +106,12 @@ func r4(s Storage, off int64) (int, error) {
 		return 0, err
 	}
 
-	var n int
+	var n uint32
 	for _, v := range b {
-		n = n<<8 | int(v)
+		n = n<<8 | uint32(v)
 	}
 	buffer.Put(p)
-	return n, nil
+	return int(int32(n)), nil
 }
 
 func r8(s Storage, off int64) (int64, error) {
@@ -124,12 +124,12 @@ func r8(s Storage, off int64) (int64, error) {
 		return 0, err
 	}
 
-	var n int64
+	var n uint64
 	for _, v := range b {
-		n = n<<8 | int64(v)
+		n = n<<8 | uint64(v)
 	}
 	buffer.Put(p)
-	return n, nil
+	return int64(n), nil
 }
 
 func w4(s Storage, off int64, n int) error {
