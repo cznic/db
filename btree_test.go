@@ -239,8 +239,9 @@ func TestBTreeSetGet0(t *testing.T) {
 }
 
 func testBTreeSetGet1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
-	const N = 1 << 2 //TODO 40000
+	const N = 1 << 3 //TODO 40000
 	for _, x := range []int{0, -1, 0x555555, 0xaaaaaa, 0x333333, 0xcccccc, 0x314159} {
+		// dbg("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@v x %#x", x)
 		func() {
 			db, f := tmpDB(t, ts)
 

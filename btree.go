@@ -680,18 +680,23 @@ func (d btDPage) split(p btXPage, pi, i int) (q btDPage, j int, err error) {
 		return q, j, err
 	}
 
-	_ = r
 	n, err := d.next()
 	if err != nil {
 		return q, j, err
 	}
 
 	if n != 0 {
-		dbg("TODO")
-		panic("TODO")
 		//TODO		r.n = d.n
+		if err := r.setNext(n); err != nil {
+			return q, j, err
+		}
+
 		//TODO		r.n.p = r
+		if err = d.openDPage(n).setPrev(r.off); err != nil {
+			return q, j, err
+		}
 	} else {
+		// t.last = r
 		if err := d.setLast(r.off); err != nil {
 			return q, j, err
 		}
@@ -737,9 +742,10 @@ func (d btDPage) split(p btXPage, pi, i int) (q btDPage, j int, err error) {
 	}
 
 	if pi >= 0 {
-		dbg("TODO")
-		panic("TODO")
 		//p.insert(pi, r.d[0].k, r)
+		if err := p.insert(pi, r.koff(0), r.off); err != nil {
+			return btDPage{}, 0, err
+		}
 	} else {
 		//t.r = newX(d).insert(0, r.d[0].k, r)
 		x, err := newBTXPage(d)
@@ -791,6 +797,7 @@ func newBTXPage(d btDPage) (r btXPage, err error) {
 }
 
 func (x btXPage) child(i int) (y int64, yy error) { return x.r8(x.off + oBTXPageItems + int64(i)*16) }
+func (x btXPage) item(i int) int64                { return x.off + oBTXPageItems + int64(i)*16 }
 func (x btXPage) key(i int) (int64, error)        { return x.r8(x.off + oBTXPageItems + int64(i)*16 + 8) }
 func (x btXPage) len() (int, error)               { return x.r4(x.off + oBTXPageLen) }
 func (x btXPage) setChild(i int, c int64) error   { return x.w8(x.off+oBTXPageItems+int64(i)*16, c) }
@@ -825,6 +832,33 @@ func (x btXPage) clr(free func(int64, int64) error) error {
 		}
 	}
 	return x.Free(x.off)
+}
+
+func (x btXPage) copy(s btXPage, di, si, n int) error {
+	nb := 16 * n
+	p := buffer.Get(nb)
+	if nr, err := s.ReadAt(*p, s.item(si)); nr != nb {
+		if err == nil {
+			dbg("TODO")
+			panic("internal error")
+		}
+
+		buffer.Put(p)
+		return err
+	}
+
+	if nw, err := x.WriteAt(*p, x.item(di)); nw != nb {
+		if err == nil {
+			dbg("TODO")
+			panic("internal error")
+		}
+
+		buffer.Put(p)
+		return err
+	}
+
+	buffer.Put(p)
+	return nil
 }
 
 func (x btXPage) find(cmp func(off int64) (int, error)) (int, bool, error) {
@@ -863,8 +897,30 @@ func (x btXPage) insert(i int, k, ch int64) error {
 	}
 
 	if i < c {
-		dbg("TODO")
-		panic("TODO")
+		// q.x[c+1].ch = q.x[c].ch
+		ch, err := x.child(c)
+		if err != nil {
+			return err
+		}
+
+		if err := x.setChild(c+1, ch); err != nil {
+			return err
+		}
+
+		// copy(q.x[i+2:], q.x[i+1:c])
+		if err := x.copy(x, i+2, i+1, c-i-1); err != nil {
+			return err
+		}
+
+		// q.x[i+1].k = q.x[i].k
+		k, err := x.key(i)
+		if err != nil {
+			return err
+		}
+
+		if err := x.setKey(i+1, k); err != nil {
+			return err
+		}
 	}
 
 	if err := x.setLen(c + 1); err != nil {
