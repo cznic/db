@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
+//TODO credit B authors
+
 package db
 
 import (
@@ -22,7 +24,6 @@ func (t *BTree) cmp(n int) func(off int64) (int, error) {
 			return 0, err
 		}
 
-		// dbg("cmp(%v, %v)", n, m)
 		if n < m {
 			return -1, nil
 		}
@@ -45,8 +46,6 @@ func (t *BTree) len(tb testing.TB) int64 {
 }
 
 func (t *BTree) get(tb testing.TB, k int) (y int, yy bool) {
-	// dbg("get(%v)", k)
-	// defer func() { dbg("get(%v) %v, %v", k, y, yy) }()
 	off, ok, err := t.Get(t.cmp(k))
 	if err != nil {
 		tb.Fatal(err)
@@ -70,11 +69,6 @@ func (t *BTree) get(tb testing.TB, k int) (y int, yy bool) {
 }
 
 func (t *BTree) set(tb testing.TB, k, v int) {
-	// dbg("set(%v, %v)", k, v)
-	// defer func() {
-	// 	dbg("set(%v, %v)\n%s", k, v, t.dump())
-	// }()
-
 	kalloc := true
 	koff, voff, err := t.Set(t.cmp(k), func(off int64) error {
 		p, err := t.r8(off)
@@ -239,16 +233,14 @@ func TestBTreeSetGet0(t *testing.T) {
 }
 
 func testBTreeSetGet1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
-	const N = 1 << 6 //TODO 40000
-	for _, x := range []int{0, -1, 0x555555, 0xaaaaaa, 0x333333, 0xcccccc, 0x314159} {
-		// dbg("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@v x %#x", x)
+	const N = 1 << 10
+	for _, x := range []int{0, -1, 0x5555555, 0xaaaaaaa, 0x3333333, 0xccccccc, 0x31415926, 0x2718282} {
 		func() {
 			db, f := tmpDB(t, ts)
 
 			defer f()
 
-			//TODO tr, err := db.NewBTree(16, 16, 8, 8)
-			tr, err := db.NewBTree(1, 2, 8, 8)
+			tr, err := db.NewBTree(16, 16, 8, 8)
 			if err != nil {
 				t.Fatal(err)
 			}
