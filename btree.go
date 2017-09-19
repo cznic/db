@@ -218,7 +218,7 @@ func (t *BTree) Get(cmp func(int64) (int, error)) (int64, bool, error) {
 			//TODO				q = x.x[i+1].ch
 			//TODO				continue
 			default:
-				dbg("TODO")
+				// dbg("TODO")
 				panic(fmt.Errorf("%T.Get: internal error: %T", t, x))
 			}
 		}
@@ -236,7 +236,7 @@ func (t *BTree) Get(cmp func(int64) (int, error)) (int64, bool, error) {
 				return 0, false, err
 			}
 		default:
-			dbg("TODO")
+			// dbg("TODO")
 			panic(fmt.Errorf("%T.Get: internal error: %T", t, x))
 		}
 
@@ -331,7 +331,7 @@ func (t *BTree) Set(cmp func(int64) (int, error), free func(int64) error) (int64
 				//TODO					x, i = t.splitX(p, x, pi, i)
 				//TODO				}
 				if c > 2*t.kx {
-					dbg("TODO")
+					// dbg("TODO")
 					panic("TODO")
 				}
 				//TODO				pi = i
@@ -352,7 +352,7 @@ func (t *BTree) Set(cmp func(int64) (int, error), free func(int64) error) (int64
 			//TODO			case *d:
 			//TODO				x.d[i].v = v
 			default:
-				dbg("TODO")
+				// dbg("TODO")
 				panic(fmt.Errorf("%T.Set: internal error %T", t, x))
 			}
 		}
@@ -398,7 +398,7 @@ func (t *BTree) Set(cmp func(int64) (int, error), free func(int64) error) (int64
 				return 0, 0, err
 			}
 		default:
-			dbg("TODO")
+			// dbg("TODO")
 			panic(fmt.Errorf("%T.Set: internal error %T", t, x))
 		}
 		//TODO		switch x := q.(type) {
@@ -500,14 +500,14 @@ func (d btDPage) clr(free func(int64, int64) error) error {
 func (d btDPage) copy(s btDPage, di, si, n int) error {
 	switch nb := (d.SzKey + d.SzVal) * int64(n); {
 	case nb > mathutil.MaxInt:
-		dbg("TODO")
+		// dbg("TODO")
 		panic("TODO")
 	default:
 		nb := int(nb)
 		p := buffer.Get(nb)
 		if nr, err := s.ReadAt(*p, s.koff(si)); nr != nb {
 			if err == nil {
-				dbg("TODO")
+				// dbg("TODO")
 				panic("internal error")
 			}
 
@@ -517,7 +517,7 @@ func (d btDPage) copy(s btDPage, di, si, n int) error {
 
 		if nw, err := d.WriteAt(*p, d.koff(di)); nw != nb {
 			if err == nil {
-				dbg("TODO")
+				// dbg("TODO")
 				panic("internal error")
 			}
 
@@ -680,7 +680,7 @@ func (d btDPage) overflow(p btXPage, pi, i int) (btDPage, int, error) {
 				return btDPage{}, 0, p.setKey(pi, r.koff(0))
 			}
 
-			dbg("TODO")
+			// dbg("TODO")
 			panic("TODO")
 			//TODO
 			//TODO 		t.insert(r, 0, k, v)
@@ -837,11 +837,12 @@ func (x btXPage) clr(free func(int64, int64) error) error {
 }
 
 func (x btXPage) copy(s btXPage, di, si, n int) error {
+	// dbg("%T(%#x).copy(%#x, %v, %v, %v)", x, x.off, s.off, di, si, n)
 	nb := 16 * n
 	p := buffer.Get(nb)
 	if nr, err := s.ReadAt(*p, s.item(si)); nr != nb {
 		if err == nil {
-			dbg("TODO")
+			// dbg("TODO")
 			panic("internal error")
 		}
 
@@ -851,7 +852,7 @@ func (x btXPage) copy(s btXPage, di, si, n int) error {
 
 	if nw, err := x.WriteAt(*p, x.item(di)); nw != nb {
 		if err == nil {
-			dbg("TODO")
+			// dbg("TODO")
 			panic("internal error")
 		}
 
@@ -969,6 +970,7 @@ func (x btXPage) siblings(i int) (l, r btDPage, err error) {
 	return l, r, nil
 }
 
+//TODO s/q/x/
 func (q btXPage) split(p btXPage, pi, i int) (btXPage, int, error) {
 	//TODO t.ver++
 	//TODO r := btXPool.Get().(*x)
@@ -983,7 +985,7 @@ func (q btXPage) split(p btXPage, pi, i int) (btXPage, int, error) {
 		return btXPage{}, 0, err
 	}
 
-	if err := r.copy(q, 0, q.kx+1, c-q.kx-1); err != nil {
+	if err := r.copy(q, 0, q.kx+1, c-q.kx); err != nil {
 		return btXPage{}, 0, err
 	}
 
@@ -999,7 +1001,7 @@ func (q btXPage) split(p btXPage, pi, i int) (btXPage, int, error) {
 
 	if pi >= 0 {
 		//TODO 	p.insert(pi, q.x[kx].k, r)
-		dbg("TODO")
+		// dbg("TODO")
 		panic("TODO")
 	} else {
 		//TODO 	t.r = newX(q).insert(0, q.x[kx].k, r)
