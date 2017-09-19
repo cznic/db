@@ -1001,8 +1001,14 @@ func (q btXPage) split(p btXPage, pi, i int) (btXPage, int, error) {
 
 	if pi >= 0 {
 		//TODO 	p.insert(pi, q.x[kx].k, r)
-		// dbg("TODO")
-		panic("TODO")
+		k, err := q.key(q.kx)
+		if err != nil {
+			return btXPage{}, 0, err
+		}
+
+		if err := p.insert(pi, k, r.off); err != nil {
+			return btXPage{}, 0, err
+		}
 	} else {
 		//TODO 	t.r = newX(q).insert(0, q.x[kx].k, r)
 		nx, err := q.newBTXPage(q.off)
