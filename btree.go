@@ -680,13 +680,19 @@ func (d btDPage) overflow(p btXPage, pi, i int) (btDPage, int, error) {
 				return btDPage{}, 0, p.setKey(pi, r.koff(0))
 			}
 
-			// dbg("TODO")
-			panic("TODO")
 			//TODO
 			//TODO 		t.insert(r, 0, k, v)
+			if err := r.insert(0); err != nil {
+				return btDPage{}, 0, err
+			}
+
 			//TODO 		p.x[pi].k = k
+			if err := p.setKey(pi, r.koff(0)); err != nil {
+				return btDPage{}, 0, err
+			}
+
 			//TODO 		return
-			//TODO 	}
+			return r, 0, nil
 		}
 	}
 
