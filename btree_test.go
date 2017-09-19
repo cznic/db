@@ -71,9 +71,9 @@ func (t *BTree) get(tb testing.TB, k int) (y int, yy bool) {
 
 func (t *BTree) set(tb testing.TB, k, v int) {
 	// dbg("set(%v, %v)", k, v)
-	// defer func() {
-	// 	dbg("set(%v, %v)\n%s", k, v, t.dump())
-	// }()
+	defer func() {
+		dbg("set(%v, %v)\n%s", k, v, t.dump())
+	}()
 
 	kalloc := true
 	koff, voff, err := t.Set(t.cmp(k), func(off int64) error {
@@ -239,9 +239,9 @@ func TestBTreeSetGet0(t *testing.T) {
 }
 
 func testBTreeSetGet1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
-	const N = 1 << 3 //TODO 40000
+	const N = 1 << 4 //TODO 40000
 	for _, x := range []int{0, -1, 0x555555, 0xaaaaaa, 0x333333, 0xcccccc, 0x314159} {
-		// dbg("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@v x %#x", x)
+		dbg("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@v x %#x", x)
 		func() {
 			db, f := tmpDB(t, ts)
 

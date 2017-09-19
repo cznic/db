@@ -130,19 +130,6 @@ func (t *BTree) setLast(n int64) error       { return t.w8(t.Off+oBTLast, n) }
 func (t *BTree) setLen(n int64) error        { return t.w8(t.Off+oBTLen, n) }
 func (t *BTree) setRoot(n int64) error       { return t.w8(t.Off+oBTRoot, n) }
 
-func (t *BTree) openPage(off int64) (btPage, error) {
-	switch tag, err := t.r4(off); {
-	case err != nil:
-		return nil, err
-	case tag == btTagDataPage:
-		return t.openDPage(off), nil
-	case tag == btTagIndexPage:
-		return t.openXPage(off), nil
-	default:
-		return nil, fmt.Errorf("%T.clr: corrupted database", t)
-	}
-}
-
 func (t *BTree) clr(off int64, free func(int64, int64) error) error {
 	if off == 0 {
 		return nil
@@ -154,6 +141,37 @@ func (t *BTree) clr(off int64, free func(int64, int64) error) error {
 	}
 
 	return p.clr(free)
+}
+
+func (t *BTree) newBTXPage(ch0 int64) (r btXPage, err error) {
+	r.BTree = t
+	if r.off, err = t.Alloc(oBTXPageItems + 16*(2*int64(r.kx)+2)); err != nil {
+		return btXPage{}, err
+	}
+
+	if err := r.setTag(btTagIndexPage); err != nil {
+		return btXPage{}, err
+	}
+
+	if ch0 != 0 {
+		if err := r.setChild(0, ch0); err != nil {
+			return btXPage{}, err
+		}
+	}
+
+	return r, nil
+}
+func (t *BTree) openPage(off int64) (btPage, error) {
+	switch tag, err := t.r4(off); {
+	case err != nil:
+		return nil, err
+	case tag == btTagDataPage:
+		return t.openDPage(off), nil
+	case tag == btTagIndexPage:
+		return t.openXPage(off), nil
+	default:
+		return nil, fmt.Errorf("%T.clr: corrupted database", t)
+	}
 }
 
 func (t *BTree) First() (int64, error) { return t.r8(t.Off + oBTFirst) }
@@ -365,8 +383,9 @@ func (t *BTree) Set(cmp func(int64) (int, error), free func(int64) error) (int64
 			return x.koff(i), x.voff(i), nil
 		case btXPage:
 			if c > 2*t.kx {
-				dbg("TODO")
-				panic("TODO")
+				if x, i, err = x.split(p, pi, i); err != nil {
+					return 0, 0, err
+				}
 			}
 			pi = i
 			p = x
@@ -748,7 +767,7 @@ func (d btDPage) split(p btXPage, pi, i int) (q btDPage, j int, err error) {
 		}
 	} else {
 		//t.r = newX(d).insert(0, r.d[0].k, r)
-		x, err := newBTXPage(d)
+		x, err := d.newBTXPage(d.off)
 		if err != nil {
 			return btDPage{}, 0, err
 		}
@@ -777,23 +796,6 @@ const (
 type btXPage struct {
 	*BTree
 	off int64
-}
-
-func newBTXPage(d btDPage) (r btXPage, err error) {
-	r.BTree = d.BTree
-	if r.off, err = d.Alloc(oBTXPageItems + 16*(2*int64(r.kx)+2)); err != nil {
-		return btXPage{}, err
-	}
-
-	if err := r.setTag(btTagIndexPage); err != nil {
-		return btXPage{}, err
-	}
-
-	if err := r.setChild(0, d.off); err != nil {
-		return btXPage{}, err
-	}
-
-	return r, nil
 }
 
 func (x btXPage) child(i int) (y int64, yy error) { return x.r8(x.off + oBTXPageItems + int64(i)*16) }
@@ -965,4 +967,71 @@ func (x btXPage) siblings(i int) (l, r btDPage, err error) {
 		}
 	}
 	return l, r, nil
+}
+
+func (q btXPage) split(p btXPage, pi, i int) (btXPage, int, error) {
+	//TODO t.ver++
+	//TODO r := btXPool.Get().(*x)
+	r, err := q.newBTXPage(0)
+	if err != nil {
+		return btXPage{}, 0, err
+	}
+
+	//TODO copy(r.x[:], q.x[kx+1:])
+	c, err := q.len()
+	if err != nil {
+		return btXPage{}, 0, err
+	}
+
+	if err := r.copy(q, 0, q.kx+1, c-q.kx-1); err != nil {
+		return btXPage{}, 0, err
+	}
+
+	//TODO q.c = kx
+	if err := q.setLen(q.kx); err != nil {
+		return btXPage{}, 0, err
+	}
+
+	//TODO r.c = kx
+	if err := r.setLen(q.kx); err != nil {
+		return btXPage{}, 0, err
+	}
+
+	if pi >= 0 {
+		//TODO 	p.insert(pi, q.x[kx].k, r)
+		dbg("TODO")
+		panic("TODO")
+	} else {
+		//TODO 	t.r = newX(q).insert(0, q.x[kx].k, r)
+		nx, err := q.newBTXPage(q.off)
+		if err != nil {
+			return btXPage{}, 0, err
+		}
+
+		k, err := q.key(q.kx)
+		if err != nil {
+			return btXPage{}, 0, err
+		}
+
+		if err := nx.insert(0, k, r.off); err != nil {
+			return btXPage{}, 0, err
+		}
+
+		if err := q.setRoot(nx.off); err != nil {
+			return btXPage{}, 0, err
+		}
+	}
+
+	//TODO q.x[kx].k = zk
+	//TODO for i := range q.x[kx+1:] {
+	//TODO 	q.x[kx+i+1] = zxe
+	//TODO }
+	if i > q.kx {
+		//TODO 	q = r
+		q = r
+		//TODO 	i -= kx + 1
+		i -= q.kx + 1
+	}
+
+	return q, i, nil
 }
