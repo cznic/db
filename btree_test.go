@@ -725,14 +725,15 @@ func TestBTreeDelete0(t *testing.T) {
 }
 
 func testBTreeDelete1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
-	const N = 3 //TODO 1 << 2 //TODO was 130000
+	const N = 3 //TODO N = 1 << 2 //TODO was 130000
 	for _, x := range []int{0, -1, 0x555555, 0xaaaaaa, 0x333333, 0xcccccc, 0x314159} {
 		func() {
 			db, f := tmpDB(t, ts)
 
 			defer f()
 
-			bt, err := db.NewBTree(16, 16, 8, 8)
+			//TODO bt, err := db.NewBTree(16, 16, 8, 8)
+			bt, err := db.NewBTree(2, 4, 8, 8)
 			if err != nil {
 				t.Fatal(err)
 			}
