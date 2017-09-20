@@ -142,18 +142,18 @@ func testBTreeGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 
 	defer f()
 
-	tr, err := db.NewBTree(16, 16, 8, 8)
+	bt, err := db.NewBTree(16, 16, 8, 8)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	defer tr.remove(t)
+	defer bt.remove(t)
 
-	if g, e := tr.len(t), int64(0); g != e {
+	if g, e := bt.len(t), int64(0); g != e {
 		t.Fatal(g, e)
 	}
 
-	_, ok := tr.get(t, 42)
+	_, ok := bt.get(t, 42)
 	if g, e := ok, false; g != e {
 		t.Fatal(g, e)
 	}
@@ -170,19 +170,19 @@ func testBTreeSetGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 
 	defer f()
 
-	tr, err := db.NewBTree(16, 16, 8, 8)
+	bt, err := db.NewBTree(16, 16, 8, 8)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	defer tr.remove(t)
+	defer bt.remove(t)
 
-	tr.set(t, 42, 314)
-	if g, e := tr.len(t), int64(1); g != e {
+	bt.set(t, 42, 314)
+	if g, e := bt.len(t), int64(1); g != e {
 		t.Fatal(g, e)
 	}
 
-	v, ok := tr.get(t, 42)
+	v, ok := bt.get(t, 42)
 	if !ok {
 		t.Fatal(ok)
 	}
@@ -191,12 +191,12 @@ func testBTreeSetGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 		t.Fatal(g, e)
 	}
 
-	tr.set(t, 42, 278)
-	if g, e := tr.len(t), int64(1); g != e {
+	bt.set(t, 42, 278)
+	if g, e := bt.len(t), int64(1); g != e {
 		t.Fatal(g, e)
 	}
 
-	v, ok = tr.get(t, 42)
+	v, ok = bt.get(t, 42)
 	if !ok {
 		t.Fatal(ok)
 	}
@@ -205,12 +205,12 @@ func testBTreeSetGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 		t.Fatal(g, e)
 	}
 
-	tr.set(t, 420, 5)
-	if g, e := tr.len(t), int64(2); g != e {
+	bt.set(t, 420, 5)
+	if g, e := bt.len(t), int64(2); g != e {
 		t.Fatal(g, e)
 	}
 
-	v, ok = tr.get(t, 42)
+	v, ok = bt.get(t, 42)
 	if !ok {
 		t.Fatal(ok)
 	}
@@ -219,7 +219,7 @@ func testBTreeSetGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 		t.Fatal(g, e)
 	}
 
-	v, ok = tr.get(t, 420)
+	v, ok = bt.get(t, 420)
 	if !ok {
 		t.Fatal(ok)
 	}
@@ -243,26 +243,26 @@ func testBTreeSetGet1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 
 			defer f()
 
-			tr, err := db.NewBTree(16, 16, 8, 8)
+			bt, err := db.NewBTree(16, 16, 8, 8)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			defer tr.remove(t)
+			defer bt.remove(t)
 
 			a := make([]int, N)
 			for i := range a {
 				a[i] = (i ^ x) << 1
 			}
 			for i, k := range a {
-				tr.set(t, k, k^x)
-				if g, e := tr.len(t), int64(i+1); g != e {
+				bt.set(t, k, k^x)
+				if g, e := bt.len(t), int64(i+1); g != e {
 					t.Fatal(i, g, e)
 				}
 			}
 
 			for i, k := range a {
-				v, ok := tr.get(t, k)
+				v, ok := bt.get(t, k)
 				if !ok {
 					t.Fatal(i, k, ok)
 				}
@@ -272,18 +272,18 @@ func testBTreeSetGet1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 				}
 
 				k |= 1
-				_, ok = tr.get(t, k)
+				_, ok = bt.get(t, k)
 				if ok {
 					t.Fatal(i, k)
 				}
 			}
 
 			for _, k := range a {
-				tr.set(t, k, (k^x)+42)
+				bt.set(t, k, (k^x)+42)
 			}
 
 			for i, k := range a {
-				v, ok := tr.get(t, k)
+				v, ok := bt.get(t, k)
 				if !ok {
 					t.Fatal(i, k, v, ok)
 				}
@@ -293,7 +293,7 @@ func testBTreeSetGet1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 				}
 
 				k |= 1
-				_, ok = tr.get(t, k)
+				_, ok = bt.get(t, k)
 				if ok {
 					t.Fatal(i, k)
 				}
@@ -314,29 +314,29 @@ func testBTreeSplitXOnEdge(t *testing.T, ts func(t testing.TB) (file.File, func(
 
 	defer f()
 
-	tr, err := db.NewBTree(2, 4, 8, 8)
+	bt, err := db.NewBTree(2, 4, 8, 8)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	defer tr.remove(t)
+	defer bt.remove(t)
 
-	kd := tr.kd
-	kx := tr.kx
+	kd := bt.kd
+	kx := bt.kx
 
 	// one index page with 2*kx+2 elements (last has .k=∞  so x.c=2*kx+1)
 	// which will splitX on next Set
 	for i := 0; i <= (2*kx+1)*2*kd; i++ {
 		// odd keys are left to be filled in second test
-		tr.set(t, 2*i, 2*i)
+		bt.set(t, 2*i, 2*i)
 	}
 
-	r, err := tr.root()
+	r, err := bt.root()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	x0 := tr.openXPage(r)
+	x0 := bt.openXPage(r)
 	x0c, err := x0.len()
 	if err != nil {
 		t.Fatal(err)
@@ -366,20 +366,20 @@ func testBTreeSplitXOnEdge(t *testing.T, ts func(t testing.TB) (file.File, func(
 		t.Fatalf("edge key before splitX: %v  ; expected %v", k, kedge)
 	}
 
-	tr.set(t, kedge, 777)
+	bt.set(t, kedge, 777)
 
 	// if splitX was wrong kedge:777 would land into wrong place with Get failing
-	v, ok := tr.get(t, kedge)
+	v, ok := bt.get(t, kedge)
 	if !(v == 777 && ok) {
 		t.Fatalf("after splitX: Get(%v) -> %v, %v  ; expected 777, true", v, ok)
 	}
 
 	// now check the same when splitted X has parent
-	if r, err = tr.root(); err != nil {
+	if r, err = bt.root(); err != nil {
 		t.Fatal(err)
 	}
 
-	xr := tr.openXPage(r)
+	xr := bt.openXPage(r)
 	xrc, err := xr.len()
 	if err != nil {
 		t.Fatal(err)
@@ -399,7 +399,7 @@ func testBTreeSplitXOnEdge(t *testing.T, ts func(t testing.TB) (file.File, func(
 	}
 
 	for i := 0; i <= (2*kx)*kd; i++ {
-		tr.set(t, 2*i+1, 2*i+1)
+		bt.set(t, 2*i+1, 2*i+1)
 	}
 
 	// check x0 is in pre-splitX condition and still at the right place
@@ -438,10 +438,10 @@ func testBTreeSplitXOnEdge(t *testing.T, ts func(t testing.TB) (file.File, func(
 		t.Fatalf("edge key before splitX: %v  ; expected %v", x0kxk, kedge)
 	}
 
-	tr.set(t, kedge, 888)
+	bt.set(t, kedge, 888)
 
 	// if splitX was wrong kedge:888 would land into wrong place
-	v, ok = tr.get(t, kedge)
+	v, ok = bt.get(t, kedge)
 	if !(v == 888 && ok) {
 		t.Fatalf("after splitX: Get(%v) -> %v, %v  ; expected 888, true", v, ok)
 	}
@@ -461,12 +461,12 @@ func testBTreeSetGet2(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 
 			defer f()
 
-			tr, err := db.NewBTree(16, 16, 8, 8)
+			bt, err := db.NewBTree(16, 16, 8, 8)
 			if err != nil {
 				t.Fatal(err)
 			}
 
-			defer tr.remove(t)
+			defer bt.remove(t)
 
 			rng := rng()
 			a := make([]int, N)
@@ -474,14 +474,14 @@ func testBTreeSetGet2(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 				a[i] = (rng.Next() ^ x) << 1
 			}
 			for i, k := range a {
-				tr.set(t, k, k^x)
-				if g, e := tr.len(t), int64(i)+1; g != e {
+				bt.set(t, k, k^x)
+				if g, e := bt.len(t), int64(i)+1; g != e {
 					t.Fatal(i, x, g, e)
 				}
 			}
 
 			for i, k := range a {
-				v, ok := tr.get(t, k)
+				v, ok := bt.get(t, k)
 				if !ok {
 					t.Fatal(i, k, v, ok)
 				}
@@ -491,18 +491,18 @@ func testBTreeSetGet2(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 				}
 
 				k |= 1
-				_, ok = tr.get(t, k)
+				_, ok = bt.get(t, k)
 				if ok {
 					t.Fatal(i, k)
 				}
 			}
 
 			for _, k := range a {
-				tr.set(t, k, (k^x)+42)
+				bt.set(t, k, (k^x)+42)
 			}
 
 			for i, k := range a {
-				v, ok := tr.get(t, k)
+				v, ok := bt.get(t, k)
 				if !ok {
 					t.Fatal(i, k, v, ok)
 				}
@@ -512,7 +512,7 @@ func testBTreeSetGet2(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 				}
 
 				k |= 1
-				_, ok = tr.get(t, k)
+				_, ok = bt.get(t, k)
 				if ok {
 					t.Fatal(i, k)
 				}
@@ -525,4 +525,55 @@ func TestBTreeSetGet2(t *testing.T) {
 	use(t.Run("Mem", func(t *testing.T) { testBTreeSetGet2(t, tmpMem) }) &&
 		t.Run("Map", func(t *testing.T) { testBTreeSetGet2(t, tmpMap) }) &&
 		t.Run("File", func(t *testing.T) { testBTreeSetGet2(t, tmpFile) }))
+}
+
+func testBTreeSetGet3(t *testing.T, ts func(t testing.TB) (file.File, func())) {
+	db, f := tmpDB(t, ts)
+
+	defer f()
+
+	bt, err := db.NewBTree(16, 16, 8, 8)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer bt.remove(t)
+
+	var i int
+	for i = 0; ; i++ {
+		bt.set(t, i, -i)
+		r, err := bt.root()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		p, err := bt.openPage(r)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if _, ok := p.(btXPage); ok {
+			break
+		}
+	}
+	for j := 0; j <= i; j++ {
+		bt.set(t, j, j)
+	}
+
+	for j := 0; j <= i; j++ {
+		v, ok := bt.get(t, j)
+		if !ok {
+			t.Fatal(j)
+		}
+
+		if g, e := v, j; g != e {
+			t.Fatal(g, e)
+		}
+	}
+}
+
+func TestBTreeSetGet3(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testBTreeSetGet3(t, tmpMem) }) &&
+		t.Run("Map", func(t *testing.T) { testBTreeSetGet3(t, tmpMap) }) &&
+		t.Run("File", func(t *testing.T) { testBTreeSetGet3(t, tmpFile) }))
 }
