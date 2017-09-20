@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"path"
 	"path/filepath"
@@ -17,6 +18,7 @@ import (
 	"testing"
 
 	"github.com/cznic/file"
+	"github.com/cznic/mathutil"
 	"github.com/cznic/strutil"
 )
 
@@ -329,4 +331,13 @@ func (t *BTree) dump() (r string) {
 		s = s[:len(s)-1]
 	}
 	return s
+}
+
+func rng() *mathutil.FC32 {
+	x, err := mathutil.NewFC32(math.MinInt32/4, math.MaxInt32/4, false)
+	if err != nil {
+		panic(err)
+	}
+
+	return x
 }

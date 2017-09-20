@@ -177,8 +177,7 @@ func testBTreeSetGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 
 	defer tr.remove(t)
 
-	set := tr.set
-	set(t, 42, 314)
+	tr.set(t, 42, 314)
 	if g, e := tr.len(t), int64(1); g != e {
 		t.Fatal(g, e)
 	}
@@ -192,7 +191,7 @@ func testBTreeSetGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 		t.Fatal(g, e)
 	}
 
-	set(t, 42, 278)
+	tr.set(t, 42, 278)
 	if g, e := tr.len(t), int64(1); g != e {
 		t.Fatal(g, e)
 	}
@@ -206,7 +205,7 @@ func testBTreeSetGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 		t.Fatal(g, e)
 	}
 
-	set(t, 420, 5)
+	tr.set(t, 420, 5)
 	if g, e := tr.len(t), int64(2); g != e {
 		t.Fatal(g, e)
 	}
@@ -251,13 +250,12 @@ func testBTreeSetGet1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 
 			defer tr.remove(t)
 
-			set := tr.set
 			a := make([]int, N)
 			for i := range a {
 				a[i] = (i ^ x) << 1
 			}
 			for i, k := range a {
-				set(t, k, k^x)
+				tr.set(t, k, k^x)
 				if g, e := tr.len(t), int64(i+1); g != e {
 					t.Fatal(i, g, e)
 				}
@@ -453,4 +451,78 @@ func TestBTreeSplitXOnEdge(t *testing.T) {
 	use(t.Run("Mem", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpMem) }) &&
 		t.Run("Map", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpMap) }) &&
 		t.Run("File", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpFile) }))
+}
+
+func testBTreeSetGet2(t *testing.T, ts func(t testing.TB) (file.File, func())) {
+	const N = 1 << 10
+	for _, x := range []int{0, -1, 0x5555555, 0xaaaaaaa, 0x3333333, 0xccccccc, 0x31415926, 0x2718282} {
+		func() {
+			db, f := tmpDB(t, ts)
+
+			defer f()
+
+			tr, err := db.NewBTree(16, 16, 8, 8)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			defer tr.remove(t)
+
+			rng := rng()
+			a := make([]int, N)
+			for i := range a {
+				a[i] = (rng.Next() ^ x) << 1
+			}
+			for i, k := range a {
+				tr.set(t, k, k^x)
+				if g, e := tr.len(t), int64(i)+1; g != e {
+					t.Fatal(i, x, g, e)
+				}
+			}
+
+			for i, k := range a {
+				v, ok := tr.get(t, k)
+				if !ok {
+					t.Fatal(i, k, v, ok)
+				}
+
+				if g, e := v, k^x; g != e {
+					t.Fatal(i, g, e)
+				}
+
+				k |= 1
+				_, ok = tr.get(t, k)
+				if ok {
+					t.Fatal(i, k)
+				}
+			}
+
+			for _, k := range a {
+				tr.set(t, k, (k^x)+42)
+			}
+
+			for i, k := range a {
+				v, ok := tr.get(t, k)
+				if !ok {
+					t.Fatal(i, k, v, ok)
+				}
+
+				if g, e := v, k^x+42; g != e {
+					t.Fatal(i, g, e)
+				}
+
+				k |= 1
+				_, ok = tr.get(t, k)
+				if ok {
+					t.Fatal(i, k)
+				}
+			}
+		}()
+	}
+}
+
+func TestBTreeSetGet2(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testBTreeSetGet2(t, tmpMem) }) &&
+		t.Run("Map", func(t *testing.T) { testBTreeSetGet2(t, tmpMap) }) &&
+		t.Run("File", func(t *testing.T) { testBTreeSetGet2(t, tmpFile) }))
 }
