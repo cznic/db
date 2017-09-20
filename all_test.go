@@ -109,6 +109,37 @@ func tmpMem(t testing.TB) (file.File, func()) {
 	}
 }
 
+func tmpMemWAL(t testing.TB) (file.File, func()) {
+	f, err := file.Mem("")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w, err := file.Mem("")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wal, err := file.NewWAL(f, w, 0, 16)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return wal, func() {
+		if err := wal.Close(); err != nil {
+			t.Error(err)
+		}
+
+		if err := w.Close(); err != nil {
+			t.Error(err)
+		}
+
+		if err := f.Close(); err != nil {
+			t.Error(err)
+		}
+	}
+}
+
 func tmpMap(t testing.TB) (file.File, func()) {
 	dir, err := ioutil.TempDir("", "file-test-")
 	if err != nil {
@@ -133,6 +164,58 @@ func tmpMap(t testing.TB) (file.File, func()) {
 	}
 }
 
+func tmpMapWAL(t testing.TB) (file.File, func()) {
+	dir, err := ioutil.TempDir("", "file-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	nm := filepath.Join(dir, "f")
+	f0, err := os.OpenFile(nm, os.O_CREATE|os.O_RDWR, 0660)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := file.Map(f0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	nm = filepath.Join(dir, "w")
+	w0, err := os.OpenFile(nm, os.O_CREATE|os.O_RDWR, 0660)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w, err := file.Map(w0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wal, err := file.NewWAL(f, w, 0, 16)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return wal, func() {
+		if err := wal.Close(); err != nil {
+			t.Error(err)
+		}
+
+		if err := w.Close(); err != nil {
+			t.Error(err)
+		}
+
+		if err := f.Close(); err != nil {
+			t.Error(err)
+		}
+
+		if err := os.RemoveAll(dir); err != nil {
+			t.Error(err)
+		}
+	}
+}
+
 func tmpFile(t testing.TB) (file.File, func()) {
 	dir, err := ioutil.TempDir("", "file-test-")
 	if err != nil {
@@ -145,6 +228,46 @@ func tmpFile(t testing.TB) (file.File, func()) {
 	}
 
 	return f, func() {
+		if err := os.RemoveAll(dir); err != nil {
+			t.Error(err)
+		}
+	}
+}
+
+func tmpFileWAL(t testing.TB) (file.File, func()) {
+	dir, err := ioutil.TempDir("", "file-test-")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f, err := os.Create(filepath.Join(dir, "f"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	w, err := os.Create(filepath.Join(dir, "w"))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	wal, err := file.NewWAL(f, w, 0, 16)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return wal, func() {
+		if err := wal.Close(); err != nil {
+			t.Error(err)
+		}
+
+		if err := w.Close(); err != nil {
+			t.Error(err)
+		}
+
+		if err := f.Close(); err != nil {
+			t.Error(err)
+		}
+
 		if err := os.RemoveAll(dir); err != nil {
 			t.Error(err)
 		}

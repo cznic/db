@@ -161,8 +161,11 @@ func testBTreeGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 
 func TestBTreeGet0(t *testing.T) {
 	use(t.Run("Mem", func(t *testing.T) { testBTreeGet0(t, tmpMem) }) &&
+		t.Run("MemWAL", func(t *testing.T) { testBTreeGet0(t, tmpMemWAL) }) &&
 		t.Run("Map", func(t *testing.T) { testBTreeGet0(t, tmpMap) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeGet0(t, tmpFile) }))
+		t.Run("MapWAL", func(t *testing.T) { testBTreeGet0(t, tmpMapWAL) }) &&
+		t.Run("File", func(t *testing.T) { testBTreeGet0(t, tmpFile) }) &&
+		t.Run("FileWAL", func(t *testing.T) { testBTreeGet0(t, tmpFileWAL) }))
 }
 
 func testBTreeSetGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -231,8 +234,11 @@ func testBTreeSetGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 
 func TestBTreeSetGet0(t *testing.T) {
 	use(t.Run("Mem", func(t *testing.T) { testBTreeSetGet0(t, tmpMem) }) &&
+		t.Run("MemWAL", func(t *testing.T) { testBTreeSetGet0(t, tmpMemWAL) }) &&
 		t.Run("Map", func(t *testing.T) { testBTreeSetGet0(t, tmpMap) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeSetGet0(t, tmpFile) }))
+		t.Run("MapWAL", func(t *testing.T) { testBTreeSetGet0(t, tmpMapWAL) }) &&
+		t.Run("File", func(t *testing.T) { testBTreeSetGet0(t, tmpFile) }) &&
+		t.Run("FileWAL", func(t *testing.T) { testBTreeSetGet0(t, tmpFileWAL) }))
 }
 
 func testBTreeSetGet1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -304,8 +310,11 @@ func testBTreeSetGet1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 
 func TestBTreeSetGet1(t *testing.T) {
 	use(t.Run("Mem", func(t *testing.T) { testBTreeSetGet1(t, tmpMem) }) &&
+		t.Run("MemWAL", func(t *testing.T) { testBTreeSetGet1(t, tmpMemWAL) }) &&
 		t.Run("Map", func(t *testing.T) { testBTreeSetGet1(t, tmpMap) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeSetGet1(t, tmpFile) }))
+		t.Run("MapWAL", func(t *testing.T) { testBTreeSetGet1(t, tmpMapWAL) }) &&
+		t.Run("File", func(t *testing.T) { testBTreeSetGet1(t, tmpFile) }) &&
+		t.Run("FileWAL", func(t *testing.T) { testBTreeSetGet1(t, tmpFileWAL) }))
 }
 
 // verify how splitX works when splitting X for k pointing directly at split edge
@@ -449,8 +458,11 @@ func testBTreeSplitXOnEdge(t *testing.T, ts func(t testing.TB) (file.File, func(
 
 func TestBTreeSplitXOnEdge(t *testing.T) {
 	use(t.Run("Mem", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpMem) }) &&
+		t.Run("MemWAL", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpMemWAL) }) &&
 		t.Run("Map", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpMap) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpFile) }))
+		t.Run("MapWAL", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpMapWAL) }) &&
+		t.Run("File", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpFile) }) &&
+		t.Run("FileWAL", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpFileWAL) }))
 }
 
 func testBTreeSetGet2(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -523,8 +535,11 @@ func testBTreeSetGet2(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 
 func TestBTreeSetGet2(t *testing.T) {
 	use(t.Run("Mem", func(t *testing.T) { testBTreeSetGet2(t, tmpMem) }) &&
+		t.Run("MemWAL", func(t *testing.T) { testBTreeSetGet2(t, tmpMemWAL) }) &&
 		t.Run("Map", func(t *testing.T) { testBTreeSetGet2(t, tmpMap) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeSetGet2(t, tmpFile) }))
+		t.Run("MapWAL", func(t *testing.T) { testBTreeSetGet2(t, tmpMapWAL) }) &&
+		t.Run("File", func(t *testing.T) { testBTreeSetGet2(t, tmpFile) }) &&
+		t.Run("FileWAL", func(t *testing.T) { testBTreeSetGet2(t, tmpFileWAL) }))
 }
 
 func testBTreeSetGet3(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -574,6 +589,9 @@ func testBTreeSetGet3(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 
 func TestBTreeSetGet3(t *testing.T) {
 	use(t.Run("Mem", func(t *testing.T) { testBTreeSetGet3(t, tmpMem) }) &&
+		t.Run("MemWAL", func(t *testing.T) { testBTreeSetGet3(t, tmpMemWAL) }) &&
 		t.Run("Map", func(t *testing.T) { testBTreeSetGet3(t, tmpMap) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeSetGet3(t, tmpFile) }))
+		t.Run("MapWAL", func(t *testing.T) { testBTreeSetGet3(t, tmpMapWAL) }) &&
+		t.Run("File", func(t *testing.T) { testBTreeSetGet3(t, tmpFile) }) &&
+		t.Run("FileWAL", func(t *testing.T) { testBTreeSetGet3(t, tmpFileWAL) }))
 }
