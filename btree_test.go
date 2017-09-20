@@ -1,8 +1,12 @@
+// Copyright 2014 The b Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE-B file.
+
+// Modifications are
+//
 // Copyright 2017 The DB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-
-//TODO credit B authors
 
 package db
 
@@ -304,4 +308,149 @@ func TestBTreeSetGet1(t *testing.T) {
 	use(t.Run("Mem", func(t *testing.T) { testBTreeSetGet1(t, tmpMem) }) &&
 		t.Run("Map", func(t *testing.T) { testBTreeSetGet1(t, tmpMap) }) &&
 		t.Run("File", func(t *testing.T) { testBTreeSetGet1(t, tmpFile) }))
+}
+
+// verify how splitX works when splitting X for k pointing directly at split edge
+func testBTreeSplitXOnEdge(t *testing.T, ts func(t testing.TB) (file.File, func())) {
+	db, f := tmpDB(t, ts)
+
+	defer f()
+
+	tr, err := db.NewBTree(2, 4, 8, 8)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer tr.remove(t)
+
+	kd := tr.kd
+	kx := tr.kx
+
+	// one index page with 2*kx+2 elements (last has .k=∞  so x.c=2*kx+1)
+	// which will splitX on next Set
+	for i := 0; i <= (2*kx+1)*2*kd; i++ {
+		// odd keys are left to be filled in second test
+		tr.set(t, 2*i, 2*i)
+	}
+
+	r, err := tr.root()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	x0 := tr.openXPage(r)
+	x0c, err := x0.len()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if x0c != 2*kx+1 {
+		t.Fatalf("x0.c: %v  ; expected %v", x0c, 2*kx+1)
+	}
+
+	// set element with k directly at x0[kx].k
+	kedge := 2 * (kx + 1) * (2 * kd)
+	pk, err := x0.key(kx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if pk, err = x0.r8(pk); err != nil {
+		t.Fatal(err)
+	}
+
+	k, err := x0.r4(pk)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if k != kedge {
+		t.Fatalf("edge key before splitX: %v  ; expected %v", k, kedge)
+	}
+
+	tr.set(t, kedge, 777)
+
+	// if splitX was wrong kedge:777 would land into wrong place with Get failing
+	v, ok := tr.get(t, kedge)
+	if !(v == 777 && ok) {
+		t.Fatalf("after splitX: Get(%v) -> %v, %v  ; expected 777, true", v, ok)
+	}
+
+	// now check the same when splitted X has parent
+	if r, err = tr.root(); err != nil {
+		t.Fatal(err)
+	}
+
+	xr := tr.openXPage(r)
+	xrc, err := xr.len()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if xrc != 1 { // second x comes with k=∞ with .c index
+		t.Fatalf("after splitX: xr.c: %v  ; expected 1", xrc)
+	}
+
+	xr0ch, err := xr.child(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if xr0ch != x0.off {
+		t.Fatal("xr[0].ch is not x0")
+	}
+
+	for i := 0; i <= (2*kx)*kd; i++ {
+		tr.set(t, 2*i+1, 2*i+1)
+	}
+
+	// check x0 is in pre-splitX condition and still at the right place
+	if x0c, err = x0.len(); err != nil {
+		t.Fatal(err)
+	}
+
+	if x0c != 2*kx+1 {
+		t.Fatalf("x0.c: %v  ; expected %v", x0c, 2*kx+1)
+	}
+
+	if xr0ch, err = xr.child(0); err != nil {
+		t.Fatal(err)
+	}
+
+	if xr0ch != x0.off {
+		t.Fatal("xr[0].ch is not x0")
+	}
+
+	// set element with k directly at x0[kx].k
+	kedge = (kx + 1) * (2 * kd)
+	if pk, err = x0.key(kx); err != nil {
+		t.Fatal(err)
+	}
+
+	if pk, err = x0.r8(pk); err != nil {
+		t.Fatal(err)
+	}
+
+	x0kxk, err := x0.r4(pk)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if x0kxk != kedge {
+		t.Fatalf("edge key before splitX: %v  ; expected %v", x0kxk, kedge)
+	}
+
+	tr.set(t, kedge, 888)
+
+	// if splitX was wrong kedge:888 would land into wrong place
+	v, ok = tr.get(t, kedge)
+	if !(v == 888 && ok) {
+		t.Fatalf("after splitX: Get(%v) -> %v, %v  ; expected 888, true", v, ok)
+	}
+}
+
+func TestBTreeSplitXOnEdge(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpMem) }) &&
+		t.Run("Map", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpMap) }) &&
+		t.Run("File", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpFile) }))
 }

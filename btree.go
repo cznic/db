@@ -1,8 +1,12 @@
+// Copyright 2014 The b Authors. All rights reserved.
+// Use of this source code is governed by a BSD-style
+// license that can be found in the LICENSE-B file.
+
+// Modifications are
+//
 // Copyright 2017 The DB Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
-
-//TODO credit B authors
 
 package db
 
