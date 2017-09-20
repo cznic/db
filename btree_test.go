@@ -115,6 +115,31 @@ func (t *BTree) set(tb testing.TB, k, v int) {
 	}
 }
 
+func (t *BTree) delete(tb testing.TB, k int) bool {
+	ok, err := t.Delete(t.cmp(k), func(k, v int64) error {
+		p, err := t.r8(k)
+		if err != nil {
+			return err
+		}
+
+		if err := t.Free(p); err != nil {
+			return err
+		}
+
+		q, err := t.r8(v)
+		if err != nil {
+			return err
+		}
+
+		return t.Free(q)
+	})
+	if err != nil {
+		tb.Fatal(err)
+	}
+
+	return ok
+}
+
 func (t *BTree) remove(tb testing.TB) {
 	if err := t.Remove(func(k, v int64) error {
 		p, err := t.r8(k)
@@ -323,7 +348,7 @@ func testBTreeSplitXOnEdge(t *testing.T, ts func(t testing.TB) (file.File, func(
 
 	defer f()
 
-	bt, err := db.NewBTree(2, 4, 8, 8)
+	bt, err := db.NewBTree(16, 16, 8, 8)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -594,4 +619,107 @@ func TestBTreeSetGet3(t *testing.T) {
 		t.Run("MapWAL", func(t *testing.T) { testBTreeSetGet3(t, tmpMapWAL) }) &&
 		t.Run("File", func(t *testing.T) { testBTreeSetGet3(t, tmpFile) }) &&
 		t.Run("FileWAL", func(t *testing.T) { testBTreeSetGet3(t, tmpFileWAL) }))
+}
+
+func testBTreeDelete0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
+	db, f := tmpDB(t, ts)
+
+	defer f()
+
+	bt, err := db.NewBTree(16, 16, 8, 8)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer bt.remove(t)
+
+	if ok := bt.delete(t, 0); ok {
+		t.Fatal(ok)
+	}
+
+	if g, e := bt.len(t), int64(0); g != e {
+		t.Fatal(g, e)
+	}
+
+	bt.set(t, 0, 0)
+	if ok := bt.delete(t, 1); ok {
+		t.Fatal(ok)
+	}
+
+	if g, e := bt.len(t), int64(1); g != e {
+		t.Fatal(g, e)
+	}
+
+	if ok := bt.delete(t, 0); !ok {
+		t.Fatal(ok)
+	}
+
+	if g, e := bt.len(t), int64(0); g != e {
+		t.Fatal(g, e)
+	}
+
+	if ok := bt.delete(t, 0); ok {
+		t.Fatal(ok)
+	}
+
+	bt.set(t, 0, 0)
+	bt.set(t, 1, 1)
+	if ok := bt.delete(t, 1); !ok {
+		t.Fatal(ok)
+	}
+
+	if g, e := bt.len(t), int64(1); g != e {
+		t.Fatal(g, e)
+	}
+
+	if ok := bt.delete(t, 1); ok {
+		t.Fatal(ok)
+	}
+
+	if ok := bt.delete(t, 0); !ok {
+		t.Fatal(ok)
+	}
+
+	if g, e := bt.len(t), int64(0); g != e {
+		t.Fatal(g, e)
+	}
+
+	if ok := bt.delete(t, 0); ok {
+		t.Fatal(ok)
+	}
+
+	bt.set(t, 0, 0)
+	bt.set(t, 1, 1)
+	if ok := bt.delete(t, 0); !ok {
+		t.Fatal(ok)
+	}
+
+	if g, e := bt.len(t), int64(1); g != e {
+		t.Fatal(g, e)
+	}
+
+	if ok := bt.delete(t, 0); ok {
+		t.Fatal(ok)
+	}
+
+	if ok := bt.delete(t, 1); !ok {
+		t.Fatal(ok)
+	}
+
+	if g, e := bt.len(t), int64(0); g != e {
+		t.Fatal(g, e)
+	}
+
+	if ok := bt.delete(t, 1); ok {
+		t.Fatal(ok)
+	}
+}
+
+func TestBTreeDelete0(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testBTreeDelete0(t, tmpMem) }) &&
+		t.Run("MemWAL", func(t *testing.T) { testBTreeDelete0(t, tmpMemWAL) }) &&
+		t.Run("Map", func(t *testing.T) { testBTreeDelete0(t, tmpMap) }) &&
+		t.Run("MapWAL", func(t *testing.T) { testBTreeDelete0(t, tmpMapWAL) }) &&
+		t.Run("File", func(t *testing.T) { testBTreeDelete0(t, tmpFile) }) &&
+		t.Run("FileWAL", func(t *testing.T) { testBTreeDelete0(t, tmpFileWAL) }))
 }
