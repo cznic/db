@@ -2,7 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package db implements some data structures found in database
+//TODO https://blog.dgraph.io/post/badger-lmdb-boltdb/
+
+// Package db implements selected data structures found in database
 // implementations.
 package db
 
