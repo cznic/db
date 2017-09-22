@@ -167,6 +167,7 @@ func (t *BTree) newBTXPage(ch0 int64) (r btXPage, err error) {
 
 	return r, nil
 }
+
 func (t *BTree) openPage(off int64) (btPage, error) {
 	switch tag, err := t.r4(off); {
 	case err != nil:
@@ -408,6 +409,60 @@ func (t *BTree) Remove(free func(k, v int64) error) (err error) {
 	}
 
 	return t.Free(t.Off)
+}
+
+func (t *BTree) Seek(cmp func(int64) (int, error)) (*Enumerator, bool, error) {
+	r, err := t.root()
+	if err != nil {
+		return nil, false, err
+	}
+
+	if r == 0 {
+		return &Enumerator{}, false, nil
+	}
+
+	q, err := t.openPage(r)
+	if err != nil {
+		return nil, false, err
+	}
+
+	for {
+		i, ok, err := q.find(cmp)
+		if err != nil {
+			return nil, false, err
+		}
+
+		if ok {
+			switch x := q.(type) {
+			case btDPage:
+				return x.newEnumerator(i), true, nil
+			case btXPage:
+				ch, err := x.child(i + 1)
+				if err != nil {
+					return nil, false, err
+				}
+
+				if q, err = t.openPage(ch); err != nil {
+					return nil, false, err
+				}
+				continue
+			}
+		}
+
+		switch x := q.(type) {
+		case btDPage:
+			return x.newEnumerator(i), false, nil
+		case btXPage:
+			ch, err := x.child(i)
+			if err != nil {
+				return nil, false, err
+			}
+
+			if q, err = t.openPage(ch); err != nil {
+				return nil, false, err
+			}
+		}
+	}
 }
 
 func (t *BTree) Set(cmp func(int64) (int, error), free func(int64) error) (int64, int64, error) {
@@ -785,6 +840,16 @@ func (d btDPage) insert(i int) error {
 	}
 
 	return d.BTree.setLen(n + 1)
+}
+
+func (p btDPage) newEnumerator(i int) *Enumerator {
+	c, err := p.len()
+	return &Enumerator{
+		btDPage: p,
+		c:       c,
+		err:     err,
+		i:       i,
+	}
 }
 
 func (d btDPage) mvL(r btDPage, dc, c int) error {
@@ -1558,4 +1623,51 @@ func (x btXPage) underflow(p btXPage, pi, i int) (btXPage, int, error) {
 	}
 
 	return x, i, nil
+}
+
+type Enumerator struct {
+	K int64
+	V int64
+	btDPage
+	c   int
+	err error
+	i   int
+	mv  bool
+}
+
+func (e *Enumerator) Err() error { return e.err }
+
+func (e *Enumerator) Next() bool {
+	if e.err != nil || e.off == 0 {
+		return false
+	}
+
+	if e.mv {
+		e.i++
+	}
+
+	if e.i < e.c {
+		e.K = e.koff(e.i)
+		e.V = e.K + e.SzKey
+		e.mv = true
+		return true
+	}
+
+	if e.btDPage.off, e.err = e.btDPage.next(); e.err != nil {
+		return false
+	}
+
+	if e.off == 0 {
+		return false
+	}
+
+	if e.c, e.err = e.len(); e.err != nil {
+		return false
+	}
+
+	e.i = 0
+	e.K = e.koff(0)
+	e.V = e.K + e.SzKey
+	e.mv = true
+	return true
 }

@@ -162,6 +162,43 @@ func (t *BTree) remove(tb testing.TB) {
 	}
 }
 
+func (t *BTree) seek(tb testing.TB, k int) (*Enumerator, bool) {
+	en, hit, err := t.Seek(t.cmp(k))
+	if err != nil {
+		tb.Fatal(err)
+	}
+
+	return en, hit
+}
+
+func (e *Enumerator) next(tb testing.TB) (int, int, bool) {
+	if e.Next() {
+		p, err := e.r8(e.K)
+		if err != nil {
+			tb.Fatal(err)
+		}
+
+		k, err := e.r4(p)
+		if err != nil {
+			tb.Fatal(err)
+		}
+
+		q, err := e.r8(e.V)
+		if err != nil {
+			tb.Fatal(err)
+		}
+
+		v, err := e.r4(q)
+		if err != nil {
+			tb.Fatal(err)
+		}
+
+		return k, v, true
+	}
+
+	return 0, 0, false
+}
+
 func testBTreeGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 	db, f := tmpDB(t, ts)
 
@@ -814,4 +851,94 @@ func TestBTreeDelete2(t *testing.T) {
 		t.Run("MapWAL", func(t *testing.T) { testBTreeDelete2(t, tmpMapWAL) }) &&
 		t.Run("File", func(t *testing.T) { testBTreeDelete2(t, tmpFile) }) &&
 		t.Run("FileWAL", func(t *testing.T) { testBTreeDelete2(t, tmpFileWAL) }))
+}
+
+func testBTreeEnumeratorNext(t *testing.T, ts func(t testing.TB) (file.File, func())) {
+	db, f := tmpDB(t, ts)
+
+	defer f()
+
+	bt, err := db.NewBTree(2, 4, 8, 8)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer bt.remove(t)
+
+	// seeking within 5 keys: 10, 20, 30, 40, 50
+	table := []struct {
+		k    int
+		hit  bool
+		keys []int
+	}{
+		{5, false, []int{10, 20, 30, 40, 50}},
+		{10, true, []int{10, 20, 30, 40, 50}},
+		{15, false, []int{20, 30, 40, 50}},
+		{20, true, []int{20, 30, 40, 50}},
+		{25, false, []int{30, 40, 50}},
+		// 5
+		{30, true, []int{30, 40, 50}},
+		{35, false, []int{40, 50}},
+		{40, true, []int{40, 50}},
+		{45, false, []int{50}},
+		{50, true, []int{50}},
+		// 10
+		{55, false, nil},
+	}
+
+	for i, test := range table {
+		up := test.keys
+
+		bt.set(t, 10, 100)
+		bt.set(t, 20, 200)
+		bt.set(t, 30, 300)
+		bt.set(t, 40, 400)
+		bt.set(t, 50, 500)
+
+		en, hit := bt.seek(t, test.k)
+
+		if g, e := hit, test.hit; g != e {
+			t.Fatal(i, g, e)
+		}
+
+		j := 0
+		for {
+			k, v, ok := en.next(t)
+			if !ok {
+				if err := en.Err(); err != nil {
+					t.Fatal(i, err)
+				}
+
+				break
+			}
+
+			if j >= len(up) {
+				t.Fatal(i, j, len(up))
+			}
+
+			if g, e := k, up[j]; g != e {
+				t.Fatal(i, j, g, e)
+			}
+
+			if g, e := v, 10*up[j]; g != e {
+				t.Fatal(i, g, e)
+			}
+
+			j++
+
+		}
+
+		if g, e := j, len(up); g != e {
+			t.Fatal(i, j, g, e)
+		}
+	}
+}
+
+func TestBTreeEnumeratorNext(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testBTreeEnumeratorNext(t, tmpMem) }) &&
+		t.Run("MemWAL", func(t *testing.T) { testBTreeEnumeratorNext(t, tmpMemWAL) }) &&
+		t.Run("Map", func(t *testing.T) { testBTreeEnumeratorNext(t, tmpMap) }) &&
+		t.Run("MapWAL", func(t *testing.T) { testBTreeEnumeratorNext(t, tmpMapWAL) }) &&
+		t.Run("File", func(t *testing.T) { testBTreeEnumeratorNext(t, tmpFile) }) &&
+		t.Run("FileWAL", func(t *testing.T) { testBTreeEnumeratorNext(t, tmpFileWAL) }))
 }
