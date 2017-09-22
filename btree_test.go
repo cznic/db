@@ -1216,25 +1216,25 @@ func testBTreeSeekLast(t *testing.T, ts func(t testing.TB) (file.File, func())) 
 					t.Fatal(i, g, e)
 				}
 
-				//				en = bt.seekFirst(t)
-				//				for j := 0; j < i; j++ {
-				//					k, v, ok := en.next(t)
-				//					if g, e := ok, true; g != e {
-				//						t.Fatal(i, g, e)
-				//					}
-				//
-				//					if g, e := k, 10*j; g != e {
-				//						t.Fatal(i, g, e)
-				//					}
-				//
-				//					if g, e := v, 100*j; g != e {
-				//						t.Fatal(i, g, e)
-				//					}
-				//				}
-				//				_, _, ok = en.next(t)
-				//				if g, e := ok, false; g != e {
-				//					t.Fatal(i, g, e)
-				//				}
+				en = bt.seekLast(t)
+				for j := i - 1; j >= 0; j-- {
+					k, v, ok := en.prev(t)
+					if g, e := ok, true; g != e {
+						t.Fatal(i, g, e)
+					}
+
+					if g, e := k, 10*j; g != e {
+						t.Fatal(i, g, e)
+					}
+
+					if g, e := v, 100*j; g != e {
+						t.Fatal(i, g, e)
+					}
+				}
+				_, _, ok = en.prev(t)
+				if g, e := ok, false; g != e {
+					t.Fatal(i, g, e)
+				}
 			}
 
 		}()
@@ -1255,7 +1255,7 @@ func testBTreeSeek(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 
 	defer f()
 
-	bt, err := db.NewBTree(2, 4, 8, 8)
+	bt, err := db.NewBTree(16, 16, 8, 8)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1298,4 +1298,42 @@ func TestBTreeSeek(t *testing.T) {
 		t.Run("MapWAL", func(t *testing.T) { testBTreeSeek(t, tmpMapWAL) }) &&
 		t.Run("File", func(t *testing.T) { testBTreeSeek(t, tmpFile) }) &&
 		t.Run("FileWAL", func(t *testing.T) { testBTreeSeek(t, tmpFileWAL) }))
+}
+
+// https://github.com/cznic/b/pull/4
+func testBTreeBPR4(t *testing.T, ts func(t testing.TB) (file.File, func())) {
+	db, f := tmpDB(t, ts)
+
+	defer f()
+
+	bt, err := db.NewBTree(16, 16, 8, 8)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer bt.remove(t)
+
+	kd := bt.kd
+	for i := 0; i < 2*kd+1; i++ {
+		k := 1000 * i
+		bt.set(t, k, 0)
+	}
+	bt.delete(t, 1000*kd)
+	for i := 0; i < kd; i++ {
+		bt.set(t, 1000*(kd+1)-1-i, 0)
+	}
+	k := 1000*(kd+1) - 1 - kd
+	bt.set(t, k, 0)
+	if _, ok := bt.get(t, k); !ok {
+		t.Fatalf("key lost: %v", k)
+	}
+}
+
+func TestBTreeBPR4(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testBTreeBPR4(t, tmpMem) }) &&
+		t.Run("MemWAL", func(t *testing.T) { testBTreeBPR4(t, tmpMemWAL) }) &&
+		t.Run("Map", func(t *testing.T) { testBTreeBPR4(t, tmpMap) }) &&
+		t.Run("MapWAL", func(t *testing.T) { testBTreeBPR4(t, tmpMapWAL) }) &&
+		t.Run("File", func(t *testing.T) { testBTreeBPR4(t, tmpFile) }) &&
+		t.Run("FileWAL", func(t *testing.T) { testBTreeBPR4(t, tmpFileWAL) }))
 }
