@@ -435,7 +435,7 @@ func (t *BTree) Seek(cmp func(int64) (int, error)) (*Enumerator, bool, error) {
 		if ok {
 			switch x := q.(type) {
 			case btDPage:
-				return x.newEnumerator(i), true, nil
+				return x.newEnumerator(i, true), true, nil
 			case btXPage:
 				ch, err := x.child(i + 1)
 				if err != nil {
@@ -451,7 +451,7 @@ func (t *BTree) Seek(cmp func(int64) (int, error)) (*Enumerator, bool, error) {
 
 		switch x := q.(type) {
 		case btDPage:
-			return x.newEnumerator(i), false, nil
+			return x.newEnumerator(i, false), false, nil
 		case btXPage:
 			ch, err := x.child(i)
 			if err != nil {
@@ -842,12 +842,13 @@ func (d btDPage) insert(i int) error {
 	return d.BTree.setLen(n + 1)
 }
 
-func (p btDPage) newEnumerator(i int) *Enumerator {
+func (p btDPage) newEnumerator(i int, hit bool) *Enumerator {
 	c, err := p.len()
 	return &Enumerator{
 		btDPage: p,
 		c:       c,
 		err:     err,
+		hit:     hit,
 		i:       i,
 	}
 }
@@ -1629,10 +1630,11 @@ type Enumerator struct {
 	K int64
 	V int64
 	btDPage
-	c   int
-	err error
-	i   int
-	mv  bool
+	c        int
+	err      error
+	hasMoved bool
+	hit      bool
+	i        int
 }
 
 func (e *Enumerator) Err() error { return e.err }
@@ -1642,14 +1644,14 @@ func (e *Enumerator) Next() bool {
 		return false
 	}
 
-	if e.mv {
+	if e.hasMoved {
 		e.i++
 	}
 
+	e.hasMoved = true
 	if e.i < e.c {
 		e.K = e.koff(e.i)
 		e.V = e.K + e.SzKey
-		e.mv = true
 		return true
 	}
 
@@ -1668,6 +1670,39 @@ func (e *Enumerator) Next() bool {
 	e.i = 0
 	e.K = e.koff(0)
 	e.V = e.K + e.SzKey
-	e.mv = true
+	return true
+}
+
+func (e *Enumerator) Prev() bool {
+	if e.err != nil || e.off == 0 {
+		return false
+	}
+
+	if e.hasMoved || !e.hit {
+		e.i--
+	}
+
+	e.hasMoved = true
+	if e.i >= 0 {
+		e.K = e.koff(e.i)
+		e.V = e.K + e.SzKey
+		return true
+	}
+
+	if e.btDPage.off, e.err = e.btDPage.prev(); e.err != nil {
+		return false
+	}
+
+	if e.off == 0 {
+		return false
+	}
+
+	if e.c, e.err = e.len(); e.err != nil {
+		return false
+	}
+
+	e.i = e.c - 1
+	e.K = e.koff(e.i)
+	e.V = e.K + e.SzKey
 	return true
 }
