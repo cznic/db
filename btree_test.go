@@ -180,6 +180,15 @@ func (t *BTree) seekFirst(tb testing.TB) *Enumerator {
 	return en
 }
 
+func (t *BTree) seekLast(tb testing.TB) *Enumerator {
+	en, err := t.SeekLast()
+	if err != nil {
+		tb.Fatal(err)
+	}
+
+	return en
+}
+
 func (e *Enumerator) next(tb testing.TB) (int, int, bool) {
 	if e.Next() {
 		p, err := e.r8(e.K)
@@ -1153,4 +1162,140 @@ func TestBTreeSeekFirst(t *testing.T) {
 		t.Run("MapWAL", func(t *testing.T) { testBTreeSeekFirst(t, tmpMapWAL) }) &&
 		t.Run("File", func(t *testing.T) { testBTreeSeekFirst(t, tmpFile) }) &&
 		t.Run("FileWAL", func(t *testing.T) { testBTreeSeekFirst(t, tmpFileWAL) }))
+}
+
+func testBTreeSeekLast(t *testing.T, ts func(t testing.TB) (file.File, func())) {
+	for i := 0; i < 10; i++ {
+		func() {
+			db, f := tmpDB(t, ts)
+
+			defer f()
+
+			bt, err := db.NewBTree(2, 4, 8, 8)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			defer bt.remove(t)
+
+			for j := 0; j < i; j++ {
+				bt.set(t, 10*j, 100*j)
+			}
+
+			switch {
+			case i == 0:
+				en := bt.seekLast(t)
+				_, _, ok := en.prev(t)
+				if g, e := ok, false; g != e {
+					t.Fatal(i, g, e)
+				}
+
+				en = bt.seekLast(t)
+				_, _, ok = en.next(t)
+				if g, e := ok, false; g != e {
+					t.Fatal(i, g, e)
+				}
+			default:
+				en := bt.seekLast(t)
+				k, v, ok := en.next(t)
+
+				if g, e := ok, true; g != e {
+					t.Fatal(i, g, e)
+				}
+
+				if g, e := k, 10*(i-1); g != e {
+					t.Fatal(i, g, e)
+				}
+
+				if g, e := v, 100*(i-1); g != e {
+					t.Fatal(i, g, e)
+				}
+
+				_, _, ok = en.next(t)
+				if g, e := ok, false; g != e {
+					t.Fatal(i, g, e)
+				}
+
+				//				en = bt.seekFirst(t)
+				//				for j := 0; j < i; j++ {
+				//					k, v, ok := en.next(t)
+				//					if g, e := ok, true; g != e {
+				//						t.Fatal(i, g, e)
+				//					}
+				//
+				//					if g, e := k, 10*j; g != e {
+				//						t.Fatal(i, g, e)
+				//					}
+				//
+				//					if g, e := v, 100*j; g != e {
+				//						t.Fatal(i, g, e)
+				//					}
+				//				}
+				//				_, _, ok = en.next(t)
+				//				if g, e := ok, false; g != e {
+				//					t.Fatal(i, g, e)
+				//				}
+			}
+
+		}()
+	}
+}
+
+func TestBTreeSeekLast(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testBTreeSeekLast(t, tmpMem) }) &&
+		t.Run("MemWAL", func(t *testing.T) { testBTreeSeekLast(t, tmpMemWAL) }) &&
+		t.Run("Map", func(t *testing.T) { testBTreeSeekLast(t, tmpMap) }) &&
+		t.Run("MapWAL", func(t *testing.T) { testBTreeSeekLast(t, tmpMapWAL) }) &&
+		t.Run("File", func(t *testing.T) { testBTreeSeekLast(t, tmpFile) }) &&
+		t.Run("FileWAL", func(t *testing.T) { testBTreeSeekLast(t, tmpFileWAL) }))
+}
+
+func testBTreeSeek(t *testing.T, ts func(t testing.TB) (file.File, func())) {
+	db, f := tmpDB(t, ts)
+
+	defer f()
+
+	bt, err := db.NewBTree(2, 4, 8, 8)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer bt.remove(t)
+
+	const N = 1 << 10
+	for i := 0; i < N; i++ {
+		k := 2*i + 1
+		bt.set(t, k, 0)
+	}
+	for i := 0; i < N; i++ {
+		k := 2 * i
+		e, ok := bt.seek(t, k)
+		if ok {
+			t.Fatal(i, k)
+		}
+
+		for j := i; j < N; j++ {
+			k2, _, ok := e.next(t)
+			if !ok {
+				t.Fatal(i, k, err)
+			}
+
+			if g, e := k2, 2*j+1; g != e {
+				t.Fatal(i, j, g, e)
+			}
+		}
+
+		if _, _, ok = e.next(t); ok {
+			t.Fatal(i)
+		}
+	}
+}
+
+func TestBTreeSeek(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testBTreeSeek(t, tmpMem) }) &&
+		t.Run("MemWAL", func(t *testing.T) { testBTreeSeek(t, tmpMemWAL) }) &&
+		t.Run("Map", func(t *testing.T) { testBTreeSeek(t, tmpMap) }) &&
+		t.Run("MapWAL", func(t *testing.T) { testBTreeSeek(t, tmpMapWAL) }) &&
+		t.Run("File", func(t *testing.T) { testBTreeSeek(t, tmpFile) }) &&
+		t.Run("FileWAL", func(t *testing.T) { testBTreeSeek(t, tmpFileWAL) }))
 }

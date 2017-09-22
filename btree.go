@@ -128,6 +128,8 @@ func (db *DB) OpenBTree(off int64) (*BTree, error) {
 	return &BTree{DB: db, Off: off, kd: kd, kx: kx, SzKey: szKey, SzVal: szVal}, nil
 }
 
+func (t *BTree) first() (int64, error)       { return t.r8(t.Off + oBTFirst) }
+func (t *BTree) last() (int64, error)        { return t.r8(t.Off + oBTLast) }
 func (t *BTree) openDPage(off int64) btDPage { return btDPage{t, off} }
 func (t *BTree) openXPage(off int64) btXPage { return btXPage{t, off} }
 func (t *BTree) root() (int64, error)        { return t.r8(t.Off + oBTRoot) }
@@ -181,9 +183,7 @@ func (t *BTree) openPage(off int64) (btPage, error) {
 	}
 }
 
-func (t *BTree) First() (int64, error) { return t.r8(t.Off + oBTFirst) }
-func (t *BTree) Last() (int64, error)  { return t.r8(t.Off + oBTLast) }
-func (t *BTree) Len() (int64, error)   { return t.r8(t.Off + oBTLen) }
+func (t *BTree) Len() (int64, error) { return t.r8(t.Off + oBTLen) }
 
 func (t *BTree) Clear(free func(int64, int64) error) error {
 	r, err := t.root()
@@ -466,7 +466,7 @@ func (t *BTree) Seek(cmp func(int64) (int, error)) (*Enumerator, bool, error) {
 }
 
 func (t *BTree) SeekFirst() (*Enumerator, error) {
-	p, err := t.First()
+	p, err := t.first()
 	if err != nil {
 		return nil, err
 	}
@@ -476,6 +476,21 @@ func (t *BTree) SeekFirst() (*Enumerator, error) {
 	}
 
 	return t.openDPage(p).newEnumerator(0, true), nil
+}
+
+func (t *BTree) SeekLast() (*Enumerator, error) {
+	p, err := t.last()
+	if err != nil {
+		return nil, err
+	}
+
+	if p == 0 {
+		return &Enumerator{}, nil
+	}
+
+	e := t.openDPage(p).newEnumerator(0, true)
+	e.i = e.c - 1
+	return e, nil
 }
 
 func (t *BTree) Set(cmp func(int64) (int, error), free func(int64) error) (int64, int64, error) {
