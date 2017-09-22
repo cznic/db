@@ -465,6 +465,19 @@ func (t *BTree) Seek(cmp func(int64) (int, error)) (*Enumerator, bool, error) {
 	}
 }
 
+func (t *BTree) SeekFirst() (*Enumerator, error) {
+	p, err := t.First()
+	if err != nil {
+		return nil, err
+	}
+
+	if p == 0 {
+		return &Enumerator{}, nil
+	}
+
+	return t.openDPage(p).newEnumerator(0, true), nil
+}
+
 func (t *BTree) Set(cmp func(int64) (int, error), free func(int64) error) (int64, int64, error) {
 	pi := -1
 	r, err := t.root()
@@ -1655,11 +1668,7 @@ func (e *Enumerator) Next() bool {
 		return true
 	}
 
-	if e.btDPage.off, e.err = e.btDPage.next(); e.err != nil {
-		return false
-	}
-
-	if e.off == 0 {
+	if e.btDPage.off, e.err = e.btDPage.next(); e.err != nil || e.off == 0 {
 		return false
 	}
 
@@ -1689,11 +1698,7 @@ func (e *Enumerator) Prev() bool {
 		return true
 	}
 
-	if e.btDPage.off, e.err = e.btDPage.prev(); e.err != nil {
-		return false
-	}
-
-	if e.off == 0 {
+	if e.btDPage.off, e.err = e.btDPage.prev(); e.err != nil || e.off == 0 {
 		return false
 	}
 
