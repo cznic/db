@@ -63,7 +63,18 @@ func init() {
 // ============================================================================
 
 var (
-	_ Storage = (*storage)(nil)
+	_     Storage = (*storage)(nil)
+	ctors         = []struct {
+		nm string
+		f  func(testing.TB) (file.File, func())
+	}{
+		{"Mem", tmpMem},
+		{"MemWAL", tmpMemWAL},
+		{"Map", tmpMap},
+		{"MapWAL", tmpMapWAL},
+		{"File", tmpFile},
+		{"FileWAL", tmpFileWAL},
+	}
 )
 
 type testDB struct{ *DB }
