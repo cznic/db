@@ -65,8 +65,8 @@ func init() {
 var (
 	_     Storage = (*storage)(nil)
 	ctors         = []struct {
-		nm string
-		f  func(testing.TB) (file.File, func())
+		s string
+		f func(testing.TB) (file.File, func())
 	}{
 		{"Mem", tmpMem},
 		{"MemWAL", tmpMemWAL},

@@ -74,15 +74,6 @@ func sListVerify(iTest int, t testing.TB, db *testDB, in []SList, out []int) {
 	}
 }
 
-func TestSList(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testSList(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testSList(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testSList(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testSList(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testSList(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testSList(t, tmpFileWAL) }))
-}
-
 func testSList(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 	db, f := tmpDB(t, ts)
 
@@ -103,13 +94,12 @@ func testSList(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 	}
 }
 
-func TestSListInsertAfter(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testSListInsertAfter(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testSListInsertAfter(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testSListInsertAfter(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testSListInsertAfter(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testSListInsertAfter(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testSListInsertAfter(t, tmpFileWAL) }))
+func TestSList(t *testing.T) {
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testSList(t, v.f) }) {
+			break
+		}
+	}
 }
 
 func testSListInsertAfter(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -154,13 +144,12 @@ func testSListInsertAfter(t *testing.T, ts func(t testing.TB) (file.File, func()
 	}
 }
 
-func TestSListInsertBefore(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testSListInsertBefore(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testSListInsertBefore(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testSListInsertBefore(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testSListInsertBefore(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testSListInsertBefore(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testSListInsertBefore(t, tmpFileWAL) }))
+func TestSListInsertAfter(t *testing.T) {
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testSListInsertAfter(t, v.f) }) {
+			break
+		}
+	}
 }
 
 func testSListInsertBefore(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -209,13 +198,12 @@ func testSListInsertBefore(t *testing.T, ts func(t testing.TB) (file.File, func(
 	}
 }
 
-func TestSListRemove(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testSListRemove(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testSListRemove(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testSListRemove(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testSListRemove(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testSListRemove(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testSListRemove(t, tmpFileWAL) }))
+func TestSListInsertBefore(t *testing.T) {
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testSListInsertBefore(t, v.f) }) {
+			break
+		}
+	}
 }
 
 func testSListRemove(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -255,13 +243,12 @@ func testSListRemove(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 	}
 }
 
-func TestSListRemoveToEnd(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testSListRemoveToEnd(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testSListRemoveToEnd(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testSListRemoveToEnd(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testSListRemoveToEnd(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testSListRemoveToEnd(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testSListRemoveToEnd(t, tmpFileWAL) }))
+func TestSListRemove(t *testing.T) {
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testSListRemove(t, v.f) }) {
+			break
+		}
+	}
 }
 
 func testSListRemoveToEnd(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -298,6 +285,14 @@ func testSListRemoveToEnd(t *testing.T, ts func(t testing.TB) (file.File, func()
 
 		in = in[:i]
 		sListVerify(iTest, t, db, in, test.out)
+	}
+}
+
+func TestSListRemoveToEnd(t *testing.T) {
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testSListRemoveToEnd(t, v.f) }) {
+			break
+		}
 	}
 }
 
