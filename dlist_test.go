@@ -85,15 +85,6 @@ func dListVerify(iTest int, t testing.TB, db *testDB, in []DList, out []int) {
 	}
 }
 
-func TestDList(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testDList(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testDList(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testDList(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testDList(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testDList(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testDList(t, tmpFileWAL) }))
-}
-
 func testDList(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 	db, f := tmpDB(t, ts)
 
@@ -114,13 +105,13 @@ func testDList(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 	}
 }
 
-func TestDListInsertAfter(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testDListInsertAfter(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testDListInsertAfter(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testDListInsertAfter(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testDListInsertAfter(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testDListInsertAfter(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testDListInsertAfter(t, tmpFileWAL) }))
+func TestDList(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testDList(t, tmpMem) }) &&
+		t.Run("MemWAL", func(t *testing.T) { testDList(t, tmpMemWAL) }) &&
+		t.Run("Map", func(t *testing.T) { testDList(t, tmpMap) }) &&
+		t.Run("MapWAL", func(t *testing.T) { testDList(t, tmpMapWAL) }) &&
+		t.Run("File", func(t *testing.T) { testDList(t, tmpFile) }) &&
+		t.Run("FileWAL", func(t *testing.T) { testDList(t, tmpFileWAL) }))
 }
 
 func testDListInsertAfter(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -165,13 +156,13 @@ func testDListInsertAfter(t *testing.T, ts func(t testing.TB) (file.File, func()
 	}
 }
 
-func TestDListInsertBefore(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testDListInsertBefore(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testDListInsertBefore(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testDListInsertBefore(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testDListInsertBefore(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testDListInsertBefore(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testDListInsertBefore(t, tmpFileWAL) }))
+func TestDListInsertAfter(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testDListInsertAfter(t, tmpMem) }) &&
+		t.Run("MemWAL", func(t *testing.T) { testDListInsertAfter(t, tmpMemWAL) }) &&
+		t.Run("Map", func(t *testing.T) { testDListInsertAfter(t, tmpMap) }) &&
+		t.Run("MapWAL", func(t *testing.T) { testDListInsertAfter(t, tmpMapWAL) }) &&
+		t.Run("File", func(t *testing.T) { testDListInsertAfter(t, tmpFile) }) &&
+		t.Run("FileWAL", func(t *testing.T) { testDListInsertAfter(t, tmpFileWAL) }))
 }
 
 func testDListInsertBefore(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -216,13 +207,13 @@ func testDListInsertBefore(t *testing.T, ts func(t testing.TB) (file.File, func(
 	}
 }
 
-func TestDListRemove(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testDListRemove(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testDListRemove(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testDListRemove(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testDListRemove(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testDListRemove(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testDListRemove(t, tmpFileWAL) }))
+func TestDListInsertBefore(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testDListInsertBefore(t, tmpMem) }) &&
+		t.Run("MemWAL", func(t *testing.T) { testDListInsertBefore(t, tmpMemWAL) }) &&
+		t.Run("Map", func(t *testing.T) { testDListInsertBefore(t, tmpMap) }) &&
+		t.Run("MapWAL", func(t *testing.T) { testDListInsertBefore(t, tmpMapWAL) }) &&
+		t.Run("File", func(t *testing.T) { testDListInsertBefore(t, tmpFile) }) &&
+		t.Run("FileWAL", func(t *testing.T) { testDListInsertBefore(t, tmpFileWAL) }))
 }
 
 func testDListRemove(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -258,13 +249,13 @@ func testDListRemove(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 	}
 }
 
-func TestDListRemoveToEnd(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testDListRemoveToEnd(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testDListRemoveToEnd(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testDListRemoveToEnd(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testDListRemoveToEnd(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testDListRemoveToEnd(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testDListRemoveToEnd(t, tmpFileWAL) }))
+func TestDListRemove(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testDListRemove(t, tmpMem) }) &&
+		t.Run("MemWAL", func(t *testing.T) { testDListRemove(t, tmpMemWAL) }) &&
+		t.Run("Map", func(t *testing.T) { testDListRemove(t, tmpMap) }) &&
+		t.Run("MapWAL", func(t *testing.T) { testDListRemove(t, tmpMapWAL) }) &&
+		t.Run("File", func(t *testing.T) { testDListRemove(t, tmpFile) }) &&
+		t.Run("FileWAL", func(t *testing.T) { testDListRemove(t, tmpFileWAL) }))
 }
 
 func testDListRemoveToEnd(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -300,13 +291,13 @@ func testDListRemoveToEnd(t *testing.T, ts func(t testing.TB) (file.File, func()
 	}
 }
 
-func TestDListRemoveToFirst(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testDListRemoveToFirst(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testDListRemoveToFirst(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testDListRemoveToFirst(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testDListRemoveToFirst(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testDListRemoveToFirst(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testDListRemoveToFirst(t, tmpFileWAL) }))
+func TestDListRemoveToEnd(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testDListRemoveToEnd(t, tmpMem) }) &&
+		t.Run("MemWAL", func(t *testing.T) { testDListRemoveToEnd(t, tmpMemWAL) }) &&
+		t.Run("Map", func(t *testing.T) { testDListRemoveToEnd(t, tmpMap) }) &&
+		t.Run("MapWAL", func(t *testing.T) { testDListRemoveToEnd(t, tmpMapWAL) }) &&
+		t.Run("File", func(t *testing.T) { testDListRemoveToEnd(t, tmpFile) }) &&
+		t.Run("FileWAL", func(t *testing.T) { testDListRemoveToEnd(t, tmpFileWAL) }))
 }
 
 func testDListRemoveToFirst(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -340,6 +331,15 @@ func testDListRemoveToFirst(t *testing.T, ts func(t testing.TB) (file.File, func
 		in = in[i+1:]
 		dListVerify(iTest, t, db, in, test.out)
 	}
+}
+
+func TestDListRemoveToFirst(t *testing.T) {
+	use(t.Run("Mem", func(t *testing.T) { testDListRemoveToFirst(t, tmpMem) }) &&
+		t.Run("MemWAL", func(t *testing.T) { testDListRemoveToFirst(t, tmpMemWAL) }) &&
+		t.Run("Map", func(t *testing.T) { testDListRemoveToFirst(t, tmpMap) }) &&
+		t.Run("MapWAL", func(t *testing.T) { testDListRemoveToFirst(t, tmpMapWAL) }) &&
+		t.Run("File", func(t *testing.T) { testDListRemoveToFirst(t, tmpFile) }) &&
+		t.Run("FileWAL", func(t *testing.T) { testDListRemoveToFirst(t, tmpFileWAL) }))
 }
 
 func benchmarkNewDList(b *testing.B, ts func(t testing.TB) (file.File, func()), dataSize int64) {
