@@ -268,12 +268,11 @@ func testBTreeGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 }
 
 func TestBTreeGet0(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testBTreeGet0(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testBTreeGet0(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testBTreeGet0(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testBTreeGet0(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeGet0(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testBTreeGet0(t, tmpFileWAL) }))
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testBTreeGet0(t, v.f) }) {
+			break
+		}
+	}
 }
 
 func testBTreeSetGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -341,12 +340,11 @@ func testBTreeSetGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 }
 
 func TestBTreeSetGet0(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testBTreeSetGet0(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testBTreeSetGet0(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testBTreeSetGet0(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testBTreeSetGet0(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeSetGet0(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testBTreeSetGet0(t, tmpFileWAL) }))
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testBTreeSetGet0(t, v.f) }) {
+			break
+		}
+	}
 }
 
 func testBTreeSetGet1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -417,12 +415,11 @@ func testBTreeSetGet1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 }
 
 func TestBTreeSetGet1(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testBTreeSetGet1(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testBTreeSetGet1(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testBTreeSetGet1(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testBTreeSetGet1(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeSetGet1(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testBTreeSetGet1(t, tmpFileWAL) }))
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testBTreeSetGet1(t, v.f) }) {
+			break
+		}
+	}
 }
 
 // verify how splitX works when splitting X for k pointing directly at split edge
@@ -565,12 +562,11 @@ func testBTreeSplitXOnEdge(t *testing.T, ts func(t testing.TB) (file.File, func(
 }
 
 func TestBTreeSplitXOnEdge(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testBTreeSplitXOnEdge(t, tmpFileWAL) }))
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testBTreeSplitXOnEdge(t, v.f) }) {
+			break
+		}
+	}
 }
 
 func testBTreeSetGet2(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -642,12 +638,11 @@ func testBTreeSetGet2(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 }
 
 func TestBTreeSetGet2(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testBTreeSetGet2(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testBTreeSetGet2(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testBTreeSetGet2(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testBTreeSetGet2(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeSetGet2(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testBTreeSetGet2(t, tmpFileWAL) }))
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testBTreeSetGet2(t, v.f) }) {
+			break
+		}
+	}
 }
 
 func testBTreeSetGet3(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -696,12 +691,11 @@ func testBTreeSetGet3(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 }
 
 func TestBTreeSetGet3(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testBTreeSetGet3(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testBTreeSetGet3(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testBTreeSetGet3(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testBTreeSetGet3(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeSetGet3(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testBTreeSetGet3(t, tmpFileWAL) }))
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testBTreeSetGet3(t, v.f) }) {
+			break
+		}
+	}
 }
 
 func testBTreeDelete0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -799,12 +793,11 @@ func testBTreeDelete0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 }
 
 func TestBTreeDelete0(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testBTreeDelete0(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testBTreeDelete0(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testBTreeDelete0(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testBTreeDelete0(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeDelete0(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testBTreeDelete0(t, tmpFileWAL) }))
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testBTreeDelete0(t, v.f) }) {
+			break
+		}
+	}
 }
 
 func testBTreeDelete1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -844,12 +837,11 @@ func testBTreeDelete1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 }
 
 func TestBTreeDelete1(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testBTreeDelete1(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testBTreeDelete1(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testBTreeDelete1(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testBTreeDelete1(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeDelete1(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testBTreeDelete1(t, tmpFileWAL) }))
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testBTreeDelete1(t, v.f) }) {
+			break
+		}
+	}
 }
 
 func testBTreeDelete2(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -891,12 +883,11 @@ func testBTreeDelete2(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 }
 
 func TestBTreeDelete2(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testBTreeDelete2(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testBTreeDelete2(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testBTreeDelete2(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testBTreeDelete2(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeDelete2(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testBTreeDelete2(t, tmpFileWAL) }))
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testBTreeDelete2(t, v.f) }) {
+			break
+		}
+	}
 }
 
 func testBTreeEnumeratorNext(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -981,12 +972,11 @@ func testBTreeEnumeratorNext(t *testing.T, ts func(t testing.TB) (file.File, fun
 }
 
 func TestBTreeEnumeratorNext(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testBTreeEnumeratorNext(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testBTreeEnumeratorNext(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testBTreeEnumeratorNext(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testBTreeEnumeratorNext(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeEnumeratorNext(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testBTreeEnumeratorNext(t, tmpFileWAL) }))
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testBTreeEnumeratorNext(t, v.f) }) {
+			break
+		}
+	}
 }
 
 func testBTreeEnumeratorPrev(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -1071,12 +1061,11 @@ func testBTreeEnumeratorPrev(t *testing.T, ts func(t testing.TB) (file.File, fun
 }
 
 func TestBTreeEnumeratorPrev(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testBTreeEnumeratorPrev(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testBTreeEnumeratorPrev(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testBTreeEnumeratorPrev(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testBTreeEnumeratorPrev(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeEnumeratorPrev(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testBTreeEnumeratorPrev(t, tmpFileWAL) }))
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testBTreeEnumeratorPrev(t, v.f) }) {
+			break
+		}
+	}
 }
 
 func testBTreeSeekFirst(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -1156,12 +1145,11 @@ func testBTreeSeekFirst(t *testing.T, ts func(t testing.TB) (file.File, func()))
 }
 
 func TestBTreeSeekFirst(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testBTreeSeekFirst(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testBTreeSeekFirst(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testBTreeSeekFirst(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testBTreeSeekFirst(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeSeekFirst(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testBTreeSeekFirst(t, tmpFileWAL) }))
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testBTreeSeekFirst(t, v.f) }) {
+			break
+		}
+	}
 }
 
 func testBTreeSeekLast(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -1242,12 +1230,11 @@ func testBTreeSeekLast(t *testing.T, ts func(t testing.TB) (file.File, func())) 
 }
 
 func TestBTreeSeekLast(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testBTreeSeekLast(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testBTreeSeekLast(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testBTreeSeekLast(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testBTreeSeekLast(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeSeekLast(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testBTreeSeekLast(t, tmpFileWAL) }))
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testBTreeSeekLast(t, v.f) }) {
+			break
+		}
+	}
 }
 
 func testBTreeSeek(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -1292,12 +1279,11 @@ func testBTreeSeek(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 }
 
 func TestBTreeSeek(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testBTreeSeek(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testBTreeSeek(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testBTreeSeek(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testBTreeSeek(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeSeek(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testBTreeSeek(t, tmpFileWAL) }))
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testBTreeSeek(t, v.f) }) {
+			break
+		}
+	}
 }
 
 // https://github.com/cznic/b/pull/4
@@ -1330,10 +1316,50 @@ func testBTreeBPR4(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 }
 
 func TestBTreeBPR4(t *testing.T) {
-	use(t.Run("Mem", func(t *testing.T) { testBTreeBPR4(t, tmpMem) }) &&
-		t.Run("MemWAL", func(t *testing.T) { testBTreeBPR4(t, tmpMemWAL) }) &&
-		t.Run("Map", func(t *testing.T) { testBTreeBPR4(t, tmpMap) }) &&
-		t.Run("MapWAL", func(t *testing.T) { testBTreeBPR4(t, tmpMapWAL) }) &&
-		t.Run("File", func(t *testing.T) { testBTreeBPR4(t, tmpFile) }) &&
-		t.Run("FileWAL", func(t *testing.T) { testBTreeBPR4(t, tmpFileWAL) }))
+	for _, v := range ctors {
+		if !t.Run(v.s, func(t *testing.T) { testBTreeBPR4(t, v.f) }) {
+			break
+		}
+	}
 }
+
+//TODO func benchmarkBTreeSetSeq(b *testing.B, ts func(t testing.TB) (file.File, func()), n int) {
+//TODO 	db, f := tmpDB(b, ts)
+//TODO
+//TODO 	defer f()
+//TODO
+//TODO 	r, err := db.NewDList(dataSize)
+//TODO 	if err != nil {
+//TODO 		b.Fatal(err)
+//TODO 	}
+//TODO
+//TODO 	a := make([]DList, b.N)
+//TODO 	for i := range a {
+//TODO 		n, err := db.NewDList(dataSize)
+//TODO 		if err != nil {
+//TODO 			b.Fatal(err)
+//TODO 		}
+//TODO
+//TODO 		if err := n.InsertAfter(r.Off); err != nil {
+//TODO 			b.Fatal(err)
+//TODO 		}
+//TODO
+//TODO 		a[i] = n
+//TODO 	}
+//TODO 	b.ResetTimer()
+//TODO 	for i := 0; i < b.N; i++ {
+//TODO 		if err := a[i].Remove(); err != nil {
+//TODO 			b.Fatal(err)
+//TODO 		}
+//TODO 	}
+//TODO 	b.StopTimer()
+//TODO 	if err := r.Free(r.Off); err != nil {
+//TODO 		b.Fatal(err)
+//TODO 	}
+//TODO }
+//TODO
+//TODO func BenchmarkDListRemove(b *testing.B) {
+//TODO 	for _, v := range ctors {
+//TODO 		b.Run(v.s, func(b *testing.B) { benchmarkDListRemove(b, v.f, 0) })
+//TODO 	}
+//TODO }
