@@ -11,9 +11,15 @@
 package db
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/cznic/file"
+)
+
+const (
+	btND = 256
+	btNX = 32
 )
 
 func (t *BTree) cmp(n int) func(off int64) (int, error) {
@@ -24,6 +30,25 @@ func (t *BTree) cmp(n int) func(off int64) (int, error) {
 		}
 
 		m, err := t.r4(p)
+		if err != nil {
+			return 0, err
+		}
+
+		if n < m {
+			return -1, nil
+		}
+
+		if n > m {
+			return 1, nil
+		}
+
+		return 0, nil
+	}
+}
+
+func (t *BTree) bcmp(n int) func(off int64) (int, error) {
+	return func(off int64) (int, error) {
+		m, err := t.r4(off)
 		if err != nil {
 			return 0, err
 		}
@@ -115,6 +140,17 @@ func (t *BTree) set(tb testing.TB, k, v int) {
 	}
 }
 
+func (t *BTree) bset(tb testing.TB, k int) {
+	koff, _, err := t.Set(t.bcmp(k), nil)
+	if err != nil {
+		tb.Fatal(err)
+	}
+
+	if err := t.w4(koff, k); err != nil {
+		tb.Fatal(err)
+	}
+}
+
 func (t *BTree) delete(tb testing.TB, k int) bool {
 	ok, err := t.Delete(t.cmp(k), func(k, v int64) error {
 		p, err := t.r8(k)
@@ -158,6 +194,12 @@ func (t *BTree) remove(tb testing.TB) {
 
 		return t.Free(q)
 	}); err != nil {
+		tb.Fatal(err)
+	}
+}
+
+func (t *BTree) bremove(tb testing.TB) {
+	if err := t.Remove(nil); err != nil {
 		tb.Fatal(err)
 	}
 }
@@ -1323,43 +1365,41 @@ func TestBTreeBPR4(t *testing.T) {
 	}
 }
 
-//TODO func benchmarkBTreeSetSeq(b *testing.B, ts func(t testing.TB) (file.File, func()), n int) {
-//TODO 	db, f := tmpDB(b, ts)
-//TODO
-//TODO 	defer f()
-//TODO
-//TODO 	r, err := db.NewDList(dataSize)
-//TODO 	if err != nil {
-//TODO 		b.Fatal(err)
-//TODO 	}
-//TODO
-//TODO 	a := make([]DList, b.N)
-//TODO 	for i := range a {
-//TODO 		n, err := db.NewDList(dataSize)
-//TODO 		if err != nil {
-//TODO 			b.Fatal(err)
-//TODO 		}
-//TODO
-//TODO 		if err := n.InsertAfter(r.Off); err != nil {
-//TODO 			b.Fatal(err)
-//TODO 		}
-//TODO
-//TODO 		a[i] = n
-//TODO 	}
-//TODO 	b.ResetTimer()
-//TODO 	for i := 0; i < b.N; i++ {
-//TODO 		if err := a[i].Remove(); err != nil {
-//TODO 			b.Fatal(err)
-//TODO 		}
-//TODO 	}
-//TODO 	b.StopTimer()
-//TODO 	if err := r.Free(r.Off); err != nil {
-//TODO 		b.Fatal(err)
-//TODO 	}
-//TODO }
-//TODO
-//TODO func BenchmarkDListRemove(b *testing.B) {
-//TODO 	for _, v := range ctors {
-//TODO 		b.Run(v.s, func(b *testing.B) { benchmarkDListRemove(b, v.f, 0) })
-//TODO 	}
-//TODO }
+func benchmarkBTreeSetSeq(b *testing.B, ts func(t testing.TB) (file.File, func()), nd, nx, n int) {
+	b.ResetTimer()
+	b.StopTimer()
+	for i := 0; i < b.N; i++ {
+		func() {
+			db, f := tmpDB(b, ts)
+
+			defer f()
+
+			bt, err := db.NewBTree(nd, nx, 8, 8) //TODO 4, 0
+			if err != nil {
+				b.Fatal(err)
+			}
+
+			defer bt.bremove(b)
+
+			b.StartTimer()
+			for j := 0; j < n; j++ {
+				bt.bset(b, j)
+			}
+			b.StopTimer()
+		}()
+	}
+	b.SetBytes(4 * int64(n)) //TODO-
+}
+
+func BenchmarkBTreeSetSeq(b *testing.B) {
+	for _, v := range ctors {
+		var n int
+		for _, e := range []int{2, 3, 4, 5} {
+			n = 1
+			for i := 0; i < e; i++ {
+				n *= 10
+			}
+			b.Run(fmt.Sprintf("%s1e%d", v.s, e), func(b *testing.B) { benchmarkBTreeSetSeq(b, v.f, btND, btNX, n) })
+		}
+	}
+}
