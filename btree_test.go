@@ -1374,7 +1374,7 @@ func benchmarkBTreeSetSeq(b *testing.B, ts func(t testing.TB) (file.File, func()
 
 			defer f()
 
-			bt, err := db.NewBTree(nd, nx, 8, 8) //TODO 4, 0
+			bt, err := db.NewBTree(nd, nx, 4, 0)
 			if err != nil {
 				b.Fatal(err)
 			}
