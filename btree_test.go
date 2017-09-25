@@ -233,7 +233,7 @@ func (t *BTree) bremove(tb testing.TB) {
 	}
 }
 
-func (t *BTree) seek(tb testing.TB, k int) (*Enumerator, bool) {
+func (t *BTree) seek(tb testing.TB, k int) (*BTreeCursor, bool) {
 	en, hit, err := t.Seek(t.cmp(k))
 	if err != nil {
 		tb.Fatal(err)
@@ -242,7 +242,7 @@ func (t *BTree) seek(tb testing.TB, k int) (*Enumerator, bool) {
 	return en, hit
 }
 
-func (t *BTree) bseek(tb testing.TB, k int) (*Enumerator, bool) {
+func (t *BTree) bseek(tb testing.TB, k int) (*BTreeCursor, bool) {
 	en, hit, err := t.Seek(t.bcmp(k))
 	if err != nil {
 		tb.Fatal(err)
@@ -251,7 +251,7 @@ func (t *BTree) bseek(tb testing.TB, k int) (*Enumerator, bool) {
 	return en, hit
 }
 
-func (t *BTree) seekFirst(tb testing.TB) *Enumerator {
+func (t *BTree) seekFirst(tb testing.TB) *BTreeCursor {
 	en, err := t.SeekFirst()
 	if err != nil {
 		tb.Fatal(err)
@@ -260,7 +260,7 @@ func (t *BTree) seekFirst(tb testing.TB) *Enumerator {
 	return en
 }
 
-func (t *BTree) seekLast(tb testing.TB) *Enumerator {
+func (t *BTree) seekLast(tb testing.TB) *BTreeCursor {
 	en, err := t.SeekLast()
 	if err != nil {
 		tb.Fatal(err)
@@ -269,7 +269,7 @@ func (t *BTree) seekLast(tb testing.TB) *Enumerator {
 	return en
 }
 
-func (e *Enumerator) next(tb testing.TB) (int, int, bool) {
+func (e *BTreeCursor) next(tb testing.TB) (int, int, bool) {
 	if e.Next() {
 		p, err := e.r8(e.K)
 		if err != nil {
@@ -297,7 +297,7 @@ func (e *Enumerator) next(tb testing.TB) (int, int, bool) {
 	return 0, 0, false
 }
 
-func (e *Enumerator) prev(tb testing.TB) (int, int, bool) {
+func (e *BTreeCursor) prev(tb testing.TB) (int, int, bool) {
 	if e.Prev() {
 		p, err := e.r8(e.K)
 		if err != nil {

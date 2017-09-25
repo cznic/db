@@ -455,14 +455,14 @@ func (t *BTree) Remove(free func(koff, voff int64) error) (err error) {
 // equal.
 //
 // For discussion of the cmp function see Delete.
-func (t *BTree) Seek(cmp func(int64) (int, error)) (*Enumerator, bool, error) {
+func (t *BTree) Seek(cmp func(int64) (int, error)) (*BTreeCursor, bool, error) {
 	r, err := t.root()
 	if err != nil {
 		return nil, false, err
 	}
 
 	if r == 0 {
-		return &Enumerator{}, false, nil
+		return &BTreeCursor{}, false, nil
 	}
 
 	q, err := t.openPage(r)
@@ -511,14 +511,14 @@ func (t *BTree) Seek(cmp func(int64) (int, error)) (*Enumerator, bool, error) {
 
 // SeekFirst returns an Enumerator position on the first item of t or an error,
 // if any.
-func (t *BTree) SeekFirst() (*Enumerator, error) {
+func (t *BTree) SeekFirst() (*BTreeCursor, error) {
 	p, err := t.first()
 	if err != nil {
 		return nil, err
 	}
 
 	if p == 0 {
-		return &Enumerator{}, nil
+		return &BTreeCursor{}, nil
 	}
 
 	return t.openDPage(p).newEnumerator(0, true), nil
@@ -526,14 +526,14 @@ func (t *BTree) SeekFirst() (*Enumerator, error) {
 
 // SeekLast returns an Enumerator position on the last item of t or an error,
 // if any.
-func (t *BTree) SeekLast() (*Enumerator, error) {
+func (t *BTree) SeekLast() (*BTreeCursor, error) {
 	p, err := t.last()
 	if err != nil {
 		return nil, err
 	}
 
 	if p == 0 {
-		return &Enumerator{}, nil
+		return &BTreeCursor{}, nil
 	}
 
 	e := t.openDPage(p).newEnumerator(0, true)
@@ -933,9 +933,9 @@ func (d btDPage) insert(i int) error {
 	return d.BTree.setLen(n + 1)
 }
 
-func (d btDPage) newEnumerator(i int, hit bool) *Enumerator {
+func (d btDPage) newEnumerator(i int, hit bool) *BTreeCursor {
 	c, err := d.len()
-	return &Enumerator{
+	return &BTreeCursor{
 		btDPage: d,
 		c:       c,
 		err:     err,
@@ -1707,10 +1707,10 @@ func (x btXPage) underflow(p btXPage, pi, i int) (btXPage, int, error) {
 	return x, i, nil
 }
 
-// Enumerator is a BTree cursor.
-type Enumerator struct {
-	K int64 // Item key offset. Not valid before first calling Next or Prev.
-	V int64 // Item value offset. Not valid before first calling Next or Prev.
+// BTreeCursor prvides enumerating BTree items.
+type BTreeCursor struct {
+	K int64 // Item key offset. Not valid before calling Next or Prev.
+	V int64 // Item value offset. Not valid before calling Next or Prev.
 	btDPage
 	c        int
 	err      error
@@ -1719,13 +1719,17 @@ type Enumerator struct {
 	i        int
 }
 
-// Err returns the error, if any, the enumerator encountered after Next/Prev
-// returns false.
-func (e *Enumerator) Err() error { return e.err }
+// Err returns the error, if any, that was encountered during iteration.
+func (e *BTreeCursor) Err() error { return e.err }
 
-// Next moves the cursor to the next item in the tree and returns a boolean
-// value indicating success.
-func (e *Enumerator) Next() bool {
+// Next moves the cursor to the next item in the tree and sets the K and V
+// fields accordingly. It returns true on success, or false if there is no next
+// item or an error happened while moving the cursor. Err should be consulted
+// to distinguish between the two cases.
+//
+// Every use of the K/V fields, even the first one, must be preceded by a call
+// to Next or Prev.
+func (e *BTreeCursor) Next() bool {
 	if e.err != nil || e.off == 0 {
 		return false
 	}
@@ -1755,9 +1759,14 @@ func (e *Enumerator) Next() bool {
 	return true
 }
 
-// Prev moves the cursor to the previous item in the tree and returns a boolean
-// value indicating success.
-func (e *Enumerator) Prev() bool {
+// Prev moves the cursor to the previous item in the tree and sets the K and V
+// fields accordingly. It returns true on success, or false if there is no
+// previous item or an error happened while moving the cursor. Err should be
+// consulted to distinguish between the two cases.
+//
+// Every use of the K/V fields, even the first one, must be preceded by a call
+// to Next or Prev.
+func (e *BTreeCursor) Prev() bool {
 	if e.err != nil || e.off == 0 {
 		return false
 	}
