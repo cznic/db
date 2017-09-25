@@ -1223,19 +1223,10 @@ func (x btXPage) cat(p btXPage, r btXPage, pi int) error {
 		return err
 	}
 
-	root, err := x.openPage(proot)
-	if err != nil {
+	if err := x.Free(proot); err != nil {
 		return err
 	}
 
-	switch x := root.(type) {
-	case btDPage:
-		panic("TODO")
-	case btXPage:
-		if err := x.Free(x.off); err != nil {
-			return err
-		}
-	}
 	return x.setRoot(x.off)
 }
 

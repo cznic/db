@@ -97,6 +97,12 @@ func (t *BTree) get(tb testing.TB, k int) (y int, yy bool) {
 	return n, true
 }
 
+func (t *BTree) bget(tb testing.TB, k int) {
+	if _, _, err := t.Get(t.bcmp(k)); err != nil {
+		tb.Fatal(err)
+	}
+}
+
 func (t *BTree) set(tb testing.TB, k, v int) {
 	kalloc := true
 	koff, voff, err := t.Set(t.cmp(k), func(off int64) error {
@@ -176,6 +182,12 @@ func (t *BTree) delete(tb testing.TB, k int) bool {
 	return ok
 }
 
+func (t *BTree) bdelete(tb testing.TB, k int) {
+	if _, err := t.Delete(t.bcmp(k), nil); err != nil {
+		tb.Fatal(err)
+	}
+}
+
 func (t *BTree) remove(tb testing.TB) {
 	if err := t.Remove(func(k, v int64) error {
 		p, err := t.r8(k)
@@ -206,6 +218,15 @@ func (t *BTree) bremove(tb testing.TB) {
 
 func (t *BTree) seek(tb testing.TB, k int) (*Enumerator, bool) {
 	en, hit, err := t.Seek(t.cmp(k))
+	if err != nil {
+		tb.Fatal(err)
+	}
+
+	return en, hit
+}
+
+func (t *BTree) bseek(tb testing.TB, k int) (*Enumerator, bool) {
+	en, hit, err := t.Seek(t.bcmp(k))
 	if err != nil {
 		tb.Fatal(err)
 	}
@@ -1388,7 +1409,6 @@ func benchmarkBTreeSetSeq(b *testing.B, ts func(t testing.TB) (file.File, func()
 			b.StopTimer()
 		}()
 	}
-	b.SetBytes(4 * int64(n)) //TODO-
 }
 
 func BenchmarkBTreeSetSeq(b *testing.B) {
@@ -1400,6 +1420,377 @@ func BenchmarkBTreeSetSeq(b *testing.B) {
 				n *= 10
 			}
 			b.Run(fmt.Sprintf("%s1e%d", v.s, e), func(b *testing.B) { benchmarkBTreeSetSeq(b, v.f, btND, btNX, n) })
+		}
+	}
+}
+
+func benchmarkBTreeGetSeq(b *testing.B, ts func(t testing.TB) (file.File, func()), nd, nx, n int) {
+	db, f := tmpDB(b, ts)
+
+	defer f()
+
+	bt, err := db.NewBTree(nd, nx, 4, 0)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	defer bt.bremove(b)
+
+	for i := 0; i < n; i++ {
+		bt.bset(b, i)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < n; j++ {
+			bt.bget(b, j)
+		}
+	}
+	b.StopTimer()
+}
+
+func BenchmarkBTreeGetSeq(b *testing.B) {
+	for _, v := range ctors {
+		var n int
+		for _, e := range []int{2, 3, 4, 5} {
+			n = 1
+			for i := 0; i < e; i++ {
+				n *= 10
+			}
+			b.Run(fmt.Sprintf("%s1e%d", v.s, e), func(b *testing.B) { benchmarkBTreeGetSeq(b, v.f, btND, btNX, n) })
+		}
+	}
+}
+
+func benchmarkBTreeSetRnd(b *testing.B, ts func(t testing.TB) (file.File, func()), nd, nx, n int) {
+	rng := rng()
+	a := make([]int, n)
+	for i := range a {
+		a[i] = rng.Next()
+	}
+	b.ResetTimer()
+	b.StopTimer()
+	for i := 0; i < b.N; i++ {
+		func() {
+			db, f := tmpDB(b, ts)
+
+			defer f()
+
+			bt, err := db.NewBTree(nd, nx, 4, 0)
+			if err != nil {
+				b.Fatal(err)
+			}
+
+			defer bt.bremove(b)
+
+			b.StartTimer()
+			for _, v := range a {
+				bt.bset(b, v)
+			}
+			b.StopTimer()
+		}()
+	}
+}
+
+func BenchmarkBTreeSetRnd(b *testing.B) {
+	for _, v := range ctors {
+		var n int
+		for _, e := range []int{2, 3, 4, 5} {
+			n = 1
+			for i := 0; i < e; i++ {
+				n *= 10
+			}
+			b.Run(fmt.Sprintf("%s1e%d", v.s, e), func(b *testing.B) { benchmarkBTreeSetRnd(b, v.f, btND, btNX, n) })
+		}
+	}
+}
+
+func benchmarkBTreeGetRnd(b *testing.B, ts func(t testing.TB) (file.File, func()), nd, nx, n int) {
+	db, f := tmpDB(b, ts)
+
+	defer f()
+
+	bt, err := db.NewBTree(nd, nx, 4, 0)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	defer bt.bremove(b)
+
+	rng := rng()
+	a := make([]int, n)
+	for i := range a {
+		a[i] = rng.Next()
+	}
+	for _, v := range a {
+		bt.bset(b, v)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, v := range a {
+			bt.bget(b, v)
+		}
+	}
+	b.StopTimer()
+}
+
+func BenchmarkBTreeGetRnd(b *testing.B) {
+	for _, v := range ctors {
+		var n int
+		for _, e := range []int{2, 3, 4, 5} {
+			n = 1
+			for i := 0; i < e; i++ {
+				n *= 10
+			}
+			b.Run(fmt.Sprintf("%s1e%d", v.s, e), func(b *testing.B) { benchmarkBTreeGetRnd(b, v.f, btND, btNX, n) })
+		}
+	}
+}
+
+func benchmarkBTreeDeleteSeq(b *testing.B, ts func(t testing.TB) (file.File, func()), nd, nx, n int) {
+	b.ResetTimer()
+	b.StopTimer()
+	for i := 0; i < b.N; i++ {
+		func() {
+			db, f := tmpDB(b, ts)
+
+			defer f()
+
+			bt, err := db.NewBTree(nd, nx, 4, 0)
+			if err != nil {
+				b.Fatal(err)
+			}
+
+			defer bt.bremove(b)
+
+			for j := 0; j < n; j++ {
+				bt.bset(b, j)
+			}
+			b.StartTimer()
+			for j := 0; j < n; j++ {
+				bt.bdelete(b, j)
+			}
+			b.StopTimer()
+		}()
+	}
+}
+
+func BenchmarkBTreeDeleteSeq(b *testing.B) {
+	for _, v := range ctors {
+		var n int
+		for _, e := range []int{2, 3, 4, 5} {
+			n = 1
+			for i := 0; i < e; i++ {
+				n *= 10
+			}
+			b.Run(fmt.Sprintf("%s1e%d", v.s, e), func(b *testing.B) { benchmarkBTreeDeleteSeq(b, v.f, btND, btNX, n) })
+		}
+	}
+}
+
+func benchmarkBTreeDeleteRnd(b *testing.B, ts func(t testing.TB) (file.File, func()), nd, nx, n int) {
+	rng := rng()
+	a := make([]int, n)
+	for i := range a {
+		a[i] = rng.Next()
+	}
+	b.ResetTimer()
+	b.StopTimer()
+	for i := 0; i < b.N; i++ {
+		func() {
+			db, f := tmpDB(b, ts)
+
+			defer f()
+
+			bt, err := db.NewBTree(nd, nx, 4, 0)
+			if err != nil {
+				b.Fatal(err)
+			}
+
+			defer bt.bremove(b)
+
+			for _, v := range a {
+				bt.bset(b, v)
+			}
+			b.StartTimer()
+			for _, v := range a {
+				bt.bdelete(b, v)
+			}
+			b.StopTimer()
+		}()
+	}
+}
+
+func BenchmarkBTreeDeleteRnd(b *testing.B) {
+	for _, v := range ctors {
+		var n int
+		for _, e := range []int{2, 3, 4, 5} {
+			n = 1
+			for i := 0; i < e; i++ {
+				n *= 10
+			}
+			b.Run(fmt.Sprintf("%s1e%d", v.s, e), func(b *testing.B) { benchmarkBTreeDeleteRnd(b, v.f, btND, btNX, n) })
+		}
+	}
+}
+
+func benchmarkBTreeSeekSeq(b *testing.B, ts func(t testing.TB) (file.File, func()), nd, nx, n int) {
+	db, f := tmpDB(b, ts)
+
+	defer f()
+
+	bt, err := db.NewBTree(nd, nx, 4, 0)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	defer bt.bremove(b)
+
+	for i := 0; i < n; i++ {
+		bt.bset(b, i)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for j := 0; j < n; j++ {
+			bt.bseek(b, j)
+		}
+	}
+	b.StopTimer()
+}
+
+func BenchmarkBTreeSeekSeq(b *testing.B) {
+	for _, v := range ctors {
+		var n int
+		for _, e := range []int{2, 3, 4, 5} {
+			n = 1
+			for i := 0; i < e; i++ {
+				n *= 10
+			}
+			b.Run(fmt.Sprintf("%s1e%d", v.s, e), func(b *testing.B) { benchmarkBTreeSeekSeq(b, v.f, btND, btNX, n) })
+		}
+	}
+}
+
+func benchmarkBTreeSeekRnd(b *testing.B, ts func(t testing.TB) (file.File, func()), nd, nx, n int) {
+	db, f := tmpDB(b, ts)
+
+	defer f()
+
+	bt, err := db.NewBTree(nd, nx, 4, 0)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	defer bt.bremove(b)
+
+	rng := rng()
+	a := make([]int, n)
+	for i := range a {
+		a[i] = rng.Next()
+	}
+
+	for _, v := range a {
+		bt.bset(b, v)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		for _, v := range a {
+			bt.bseek(b, v)
+		}
+	}
+	b.StopTimer()
+}
+
+func BenchmarkBTreeSeekRnd(b *testing.B) {
+	for _, v := range ctors {
+		var n int
+		for _, e := range []int{2, 3, 4, 5} {
+			n = 1
+			for i := 0; i < e; i++ {
+				n *= 10
+			}
+			b.Run(fmt.Sprintf("%s1e%d", v.s, e), func(b *testing.B) { benchmarkBTreeSeekRnd(b, v.f, btND, btNX, n) })
+		}
+	}
+}
+
+func benchmarkBTreeNext(b *testing.B, ts func(t testing.TB) (file.File, func()), nd, nx, n int) {
+	db, f := tmpDB(b, ts)
+
+	defer f()
+
+	bt, err := db.NewBTree(nd, nx, 4, 0)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	defer bt.bremove(b)
+
+	for i := 0; i < n; i++ {
+		bt.bset(b, i)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		en := bt.seekFirst(b)
+		for j := 0; j < n; j++ {
+			en.Next()
+		}
+	}
+	b.StopTimer()
+}
+
+func BenchmarkBTreeNext(b *testing.B) {
+	for _, v := range ctors {
+		var n int
+		for _, e := range []int{2, 3, 4, 5} {
+			n = 1
+			for i := 0; i < e; i++ {
+				n *= 10
+			}
+			b.Run(fmt.Sprintf("%s1e%d", v.s, e), func(b *testing.B) { benchmarkBTreeNext(b, v.f, btND, btNX, n) })
+		}
+	}
+}
+
+func benchmarkBTreePrev(b *testing.B, ts func(t testing.TB) (file.File, func()), nd, nx, n int) {
+	db, f := tmpDB(b, ts)
+
+	defer f()
+
+	bt, err := db.NewBTree(nd, nx, 4, 0)
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	defer bt.bremove(b)
+
+	for i := 0; i < n; i++ {
+		bt.bset(b, i)
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		en := bt.seekLast(b)
+		for j := 0; j < n; j++ {
+			en.Prev()
+		}
+	}
+	b.StopTimer()
+}
+
+func BenchmarkBTreePrev(b *testing.B) {
+	for _, v := range ctors {
+		var n int
+		for _, e := range []int{2, 3, 4, 5} {
+			n = 1
+			for i := 0; i < e; i++ {
+				n *= 10
+			}
+			b.Run(fmt.Sprintf("%s1e%d", v.s, e), func(b *testing.B) { benchmarkBTreePrev(b, v.f, btND, btNX, n) })
 		}
 	}
 }
