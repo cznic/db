@@ -683,7 +683,6 @@ const (
 
 type btDPage struct {
 	*BTree
-	c   int
 	off int64
 }
 
@@ -714,11 +713,11 @@ func newBTDPage(t *BTree) (btDPage, error) {
 	return r, nil
 }
 
-func (d *btDPage) setLen(n int) error   { d.c = n; return d.w4(d.off+oBTDPageLen, n) }
 func (d btDPage) koff(i int) int64      { return d.off + oBTDPageItems + int64(i)*(d.SzKey+d.SzVal) }
 func (d btDPage) len() (int, error)     { return d.r4(d.off + oBTDPageLen) }
 func (d btDPage) next() (int64, error)  { return d.r8(d.off + oBTDPageNext) }
 func (d btDPage) prev() (int64, error)  { return d.r8(d.off + oBTDPagePrev) }
+func (d btDPage) setLen(n int) error    { return d.w4(d.off+oBTDPageLen, n) }
 func (d btDPage) setNext(n int64) error { return d.w8(d.off+oBTDPageNext, n) }
 func (d btDPage) setPrev(n int64) error { return d.w8(d.off+oBTDPagePrev, n) }
 func (d btDPage) setTag(n int) error    { return d.w4(d.off+oBTDPageTag, n) }
