@@ -1707,7 +1707,7 @@ func (x btXPage) underflow(p btXPage, pi, i int) (btXPage, int, error) {
 	return x, i, nil
 }
 
-// BTreeCursor prvides enumerating BTree items.
+// BTreeCursor provides enumerating BTree items.
 type BTreeCursor struct {
 	K int64 // Item key offset. Not valid before calling Next or Prev.
 	V int64 // Item value offset. Not valid before calling Next or Prev.
