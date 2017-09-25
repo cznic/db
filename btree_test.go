@@ -17,11 +17,6 @@ import (
 	"github.com/cznic/file"
 )
 
-const (
-	btND = 256
-	btNX = 32
-)
-
 func (t *BTree) cmp(n int) func(off int64) (int, error) {
 	return func(off int64) (int, error) {
 		p, err := t.r8(off)
@@ -153,6 +148,28 @@ func (t *BTree) bset(tb testing.TB, k int) {
 	}
 
 	if err := t.w4(koff, k); err != nil {
+		tb.Fatal(err)
+	}
+}
+
+func (t *BTree) clear(tb testing.TB) {
+	if err := t.Clear(func(k, v int64) error {
+		p, err := t.r8(k)
+		if err != nil {
+			return err
+		}
+
+		if err := t.Free(p); err != nil {
+			return err
+		}
+
+		q, err := t.r8(v)
+		if err != nil {
+			return err
+		}
+
+		return t.Free(q)
+	}); err != nil {
 		tb.Fatal(err)
 	}
 }
@@ -320,14 +337,22 @@ func testBTreeGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 
 	defer bt.remove(t)
 
-	if g, e := bt.len(t), int64(0); g != e {
-		t.Fatal(g, e)
+	g := func() {
+		if g, e := bt.len(t), int64(0); g != e {
+			t.Fatal(g, e)
+		}
+
+		_, ok := bt.get(t, 42)
+		if g, e := ok, false; g != e {
+			t.Fatal(g, e)
+		}
 	}
 
-	_, ok := bt.get(t, 42)
-	if g, e := ok, false; g != e {
-		t.Fatal(g, e)
+	g()
+	if bt, err = db.OpenBTree(bt.Off); err != nil {
+		t.Fatal(err)
 	}
+	g()
 }
 
 func TestBTreeGet0(t *testing.T) {
@@ -350,56 +375,65 @@ func testBTreeSetGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 
 	defer bt.remove(t)
 
-	bt.set(t, 42, 314)
-	if g, e := bt.len(t), int64(1); g != e {
-		t.Fatal(g, e)
+	g := func() {
+		bt.clear(t)
+		bt.set(t, 42, 314)
+		if g, e := bt.len(t), int64(1); g != e {
+			t.Fatal(g, e)
+		}
+
+		v, ok := bt.get(t, 42)
+		if !ok {
+			t.Fatal(ok)
+		}
+
+		if g, e := v, 314; g != e {
+			t.Fatal(g, e)
+		}
+
+		bt.set(t, 42, 278)
+		if g, e := bt.len(t), int64(1); g != e {
+			t.Fatal(g, e)
+		}
+
+		v, ok = bt.get(t, 42)
+		if !ok {
+			t.Fatal(ok)
+		}
+
+		if g, e := v, 278; g != e {
+			t.Fatal(g, e)
+		}
+
+		bt.set(t, 420, 5)
+		if g, e := bt.len(t), int64(2); g != e {
+			t.Fatal(g, e)
+		}
+
+		v, ok = bt.get(t, 42)
+		if !ok {
+			t.Fatal(ok)
+		}
+
+		if g, e := v, 278; g != e {
+			t.Fatal(g, e)
+		}
+
+		v, ok = bt.get(t, 420)
+		if !ok {
+			t.Fatal(ok)
+		}
+
+		if g, e := v, 5; g != e {
+			t.Fatal(g, e)
+		}
 	}
 
-	v, ok := bt.get(t, 42)
-	if !ok {
-		t.Fatal(ok)
+	g()
+	if bt, err = db.OpenBTree(bt.Off); err != nil {
+		t.Fatal(err)
 	}
-
-	if g, e := v, 314; g != e {
-		t.Fatal(g, e)
-	}
-
-	bt.set(t, 42, 278)
-	if g, e := bt.len(t), int64(1); g != e {
-		t.Fatal(g, e)
-	}
-
-	v, ok = bt.get(t, 42)
-	if !ok {
-		t.Fatal(ok)
-	}
-
-	if g, e := v, 278; g != e {
-		t.Fatal(g, e)
-	}
-
-	bt.set(t, 420, 5)
-	if g, e := bt.len(t), int64(2); g != e {
-		t.Fatal(g, e)
-	}
-
-	v, ok = bt.get(t, 42)
-	if !ok {
-		t.Fatal(ok)
-	}
-
-	if g, e := v, 278; g != e {
-		t.Fatal(g, e)
-	}
-
-	v, ok = bt.get(t, 420)
-	if !ok {
-		t.Fatal(ok)
-	}
-
-	if g, e := v, 5; g != e {
-		t.Fatal(g, e)
-	}
+	g()
 }
 
 func TestBTreeSetGet0(t *testing.T) {
@@ -436,43 +470,59 @@ func testBTreeSetGet1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 				}
 			}
 
-			for i, k := range a {
-				v, ok := bt.get(t, k)
-				if !ok {
-					t.Fatal(i, k, ok)
-				}
+			g := func() {
+				for i, k := range a {
+					v, ok := bt.get(t, k)
+					if !ok {
+						t.Fatal(i, k, ok)
+					}
 
-				if g, e := v, k^x; g != e {
-					t.Fatal(i, g, e)
-				}
+					if g, e := v, k^x; g != e {
+						t.Fatal(i, g, e)
+					}
 
-				k |= 1
-				_, ok = bt.get(t, k)
-				if ok {
-					t.Fatal(i, k)
+					k |= 1
+					_, ok = bt.get(t, k)
+					if ok {
+						t.Fatal(i, k)
+					}
 				}
 			}
+
+			g()
+			if bt, err = db.OpenBTree(bt.Off); err != nil {
+				t.Fatal(err)
+			}
+			g()
 
 			for _, k := range a {
 				bt.set(t, k, (k^x)+42)
 			}
 
-			for i, k := range a {
-				v, ok := bt.get(t, k)
-				if !ok {
-					t.Fatal(i, k, v, ok)
-				}
+			g = func() {
+				for i, k := range a {
+					v, ok := bt.get(t, k)
+					if !ok {
+						t.Fatal(i, k, v, ok)
+					}
 
-				if g, e := v, k^x+42; g != e {
-					t.Fatal(i, g, e)
-				}
+					if g, e := v, k^x+42; g != e {
+						t.Fatal(i, g, e)
+					}
 
-				k |= 1
-				_, ok = bt.get(t, k)
-				if ok {
-					t.Fatal(i, k)
+					k |= 1
+					_, ok = bt.get(t, k)
+					if ok {
+						t.Fatal(i, k)
+					}
 				}
 			}
+
+			g()
+			if bt, err = db.OpenBTree(bt.Off); err != nil {
+				t.Fatal(err)
+			}
+			g()
 		}()
 	}
 }
@@ -498,130 +548,139 @@ func testBTreeSplitXOnEdge(t *testing.T, ts func(t testing.TB) (file.File, func(
 
 	defer bt.remove(t)
 
-	kd := bt.kd
-	kx := bt.kx
+	g := func() {
+		bt.clear(t)
+		kd := bt.kd
+		kx := bt.kx
 
-	// one index page with 2*kx+2 elements (last has .k=∞  so x.c=2*kx+1)
-	// which will splitX on next Set
-	for i := 0; i <= (2*kx+1)*2*kd; i++ {
-		// odd keys are left to be filled in second test
-		bt.set(t, 2*i, 2*i)
+		// one index page with 2*kx+2 elements (last has .k=∞  so x.c=2*kx+1)
+		// which will splitX on next Set
+		for i := 0; i <= (2*kx+1)*2*kd; i++ {
+			// odd keys are left to be filled in second test
+			bt.set(t, 2*i, 2*i)
+		}
+
+		r, err := bt.root()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		x0 := bt.openXPage(r)
+		x0c, err := x0.len()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if x0c != 2*kx+1 {
+			t.Fatalf("x0.c: %v  ; expected %v", x0c, 2*kx+1)
+		}
+
+		// set element with k directly at x0[kx].k
+		kedge := 2 * (kx + 1) * (2 * kd)
+		pk, err := x0.key(kx)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if pk, err = x0.r8(pk); err != nil {
+			t.Fatal(err)
+		}
+
+		k, err := x0.r4(pk)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if k != kedge {
+			t.Fatalf("edge key before splitX: %v  ; expected %v", k, kedge)
+		}
+
+		bt.set(t, kedge, 777)
+
+		// if splitX was wrong kedge:777 would land into wrong place with Get failing
+		v, ok := bt.get(t, kedge)
+		if !(v == 777 && ok) {
+			t.Fatalf("after splitX: Get(%v) -> %v, %v  ; expected 777, true", kedge, v, ok)
+		}
+
+		// now check the same when splitted X has parent
+		if r, err = bt.root(); err != nil {
+			t.Fatal(err)
+		}
+
+		xr := bt.openXPage(r)
+		xrc, err := xr.len()
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if xrc != 1 { // second x comes with k=∞ with .c index
+			t.Fatalf("after splitX: xr.c: %v  ; expected 1", xrc)
+		}
+
+		xr0ch, err := xr.child(0)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if xr0ch != x0.off {
+			t.Fatal("xr[0].ch is not x0")
+		}
+
+		for i := 0; i <= (2*kx)*kd; i++ {
+			bt.set(t, 2*i+1, 2*i+1)
+		}
+
+		// check x0 is in pre-splitX condition and still at the right place
+		if x0c, err = x0.len(); err != nil {
+			t.Fatal(err)
+		}
+
+		if x0c != 2*kx+1 {
+			t.Fatalf("x0.c: %v  ; expected %v", x0c, 2*kx+1)
+		}
+
+		if xr0ch, err = xr.child(0); err != nil {
+			t.Fatal(err)
+		}
+
+		if xr0ch != x0.off {
+			t.Fatal("xr[0].ch is not x0")
+		}
+
+		// set element with k directly at x0[kx].k
+		kedge = (kx + 1) * (2 * kd)
+		if pk, err = x0.key(kx); err != nil {
+			t.Fatal(err)
+		}
+
+		if pk, err = x0.r8(pk); err != nil {
+			t.Fatal(err)
+		}
+
+		x0kxk, err := x0.r4(pk)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if x0kxk != kedge {
+			t.Fatalf("edge key before splitX: %v  ; expected %v", x0kxk, kedge)
+		}
+
+		bt.set(t, kedge, 888)
+
+		// if splitX was wrong kedge:888 would land into wrong place
+		v, ok = bt.get(t, kedge)
+		if !(v == 888 && ok) {
+			t.Fatalf("after splitX: Get(%v) -> %v, %v  ; expected 888, true", kedge, v, ok)
+		}
 	}
 
-	r, err := bt.root()
-	if err != nil {
+	g()
+	if bt, err = db.OpenBTree(bt.Off); err != nil {
 		t.Fatal(err)
 	}
-
-	x0 := bt.openXPage(r)
-	x0c, err := x0.len()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if x0c != 2*kx+1 {
-		t.Fatalf("x0.c: %v  ; expected %v", x0c, 2*kx+1)
-	}
-
-	// set element with k directly at x0[kx].k
-	kedge := 2 * (kx + 1) * (2 * kd)
-	pk, err := x0.key(kx)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if pk, err = x0.r8(pk); err != nil {
-		t.Fatal(err)
-	}
-
-	k, err := x0.r4(pk)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if k != kedge {
-		t.Fatalf("edge key before splitX: %v  ; expected %v", k, kedge)
-	}
-
-	bt.set(t, kedge, 777)
-
-	// if splitX was wrong kedge:777 would land into wrong place with Get failing
-	v, ok := bt.get(t, kedge)
-	if !(v == 777 && ok) {
-		t.Fatalf("after splitX: Get(%v) -> %v, %v  ; expected 777, true", kedge, v, ok)
-	}
-
-	// now check the same when splitted X has parent
-	if r, err = bt.root(); err != nil {
-		t.Fatal(err)
-	}
-
-	xr := bt.openXPage(r)
-	xrc, err := xr.len()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if xrc != 1 { // second x comes with k=∞ with .c index
-		t.Fatalf("after splitX: xr.c: %v  ; expected 1", xrc)
-	}
-
-	xr0ch, err := xr.child(0)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if xr0ch != x0.off {
-		t.Fatal("xr[0].ch is not x0")
-	}
-
-	for i := 0; i <= (2*kx)*kd; i++ {
-		bt.set(t, 2*i+1, 2*i+1)
-	}
-
-	// check x0 is in pre-splitX condition and still at the right place
-	if x0c, err = x0.len(); err != nil {
-		t.Fatal(err)
-	}
-
-	if x0c != 2*kx+1 {
-		t.Fatalf("x0.c: %v  ; expected %v", x0c, 2*kx+1)
-	}
-
-	if xr0ch, err = xr.child(0); err != nil {
-		t.Fatal(err)
-	}
-
-	if xr0ch != x0.off {
-		t.Fatal("xr[0].ch is not x0")
-	}
-
-	// set element with k directly at x0[kx].k
-	kedge = (kx + 1) * (2 * kd)
-	if pk, err = x0.key(kx); err != nil {
-		t.Fatal(err)
-	}
-
-	if pk, err = x0.r8(pk); err != nil {
-		t.Fatal(err)
-	}
-
-	x0kxk, err := x0.r4(pk)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if x0kxk != kedge {
-		t.Fatalf("edge key before splitX: %v  ; expected %v", x0kxk, kedge)
-	}
-
-	bt.set(t, kedge, 888)
-
-	// if splitX was wrong kedge:888 would land into wrong place
-	v, ok = bt.get(t, kedge)
-	if !(v == 888 && ok) {
-		t.Fatalf("after splitX: Get(%v) -> %v, %v  ; expected 888, true", kedge, v, ok)
-	}
+	g()
 }
 
 func TestBTreeSplitXOnEdge(t *testing.T) {
@@ -659,43 +718,59 @@ func testBTreeSetGet2(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 				}
 			}
 
-			for i, k := range a {
-				v, ok := bt.get(t, k)
-				if !ok {
-					t.Fatal(i, k, v, ok)
-				}
+			g := func() {
+				for i, k := range a {
+					v, ok := bt.get(t, k)
+					if !ok {
+						t.Fatal(i, k, v, ok)
+					}
 
-				if g, e := v, k^x; g != e {
-					t.Fatal(i, g, e)
-				}
+					if g, e := v, k^x; g != e {
+						t.Fatal(i, g, e)
+					}
 
-				k |= 1
-				_, ok = bt.get(t, k)
-				if ok {
-					t.Fatal(i, k)
+					k |= 1
+					_, ok = bt.get(t, k)
+					if ok {
+						t.Fatal(i, k)
+					}
 				}
 			}
+
+			g()
+			if bt, err = db.OpenBTree(bt.Off); err != nil {
+				t.Fatal(err)
+			}
+			g()
 
 			for _, k := range a {
 				bt.set(t, k, (k^x)+42)
 			}
 
-			for i, k := range a {
-				v, ok := bt.get(t, k)
-				if !ok {
-					t.Fatal(i, k, v, ok)
-				}
+			g = func() {
+				for i, k := range a {
+					v, ok := bt.get(t, k)
+					if !ok {
+						t.Fatal(i, k, v, ok)
+					}
 
-				if g, e := v, k^x+42; g != e {
-					t.Fatal(i, g, e)
-				}
+					if g, e := v, k^x+42; g != e {
+						t.Fatal(i, g, e)
+					}
 
-				k |= 1
-				_, ok = bt.get(t, k)
-				if ok {
-					t.Fatal(i, k)
+					k |= 1
+					_, ok = bt.get(t, k)
+					if ok {
+						t.Fatal(i, k)
+					}
 				}
 			}
+
+			g()
+			if bt, err = db.OpenBTree(bt.Off); err != nil {
+				t.Fatal(err)
+			}
+			g()
 		}()
 	}
 }

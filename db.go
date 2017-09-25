@@ -3,7 +3,6 @@
 // license that can be found in the LICENSE file.
 
 //TODO https://blog.dgraph.io/post/badger-lmdb-boltdb/
-//TODO add reopen tests
 
 // Package db implements selected data structures found in database
 // implementations.

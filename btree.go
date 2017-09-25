@@ -18,6 +18,12 @@ import (
 	"github.com/cznic/mathutil"
 )
 
+const (
+	btND       = 256
+	btNX       = 32
+	maxCopyBuf = 64 << 20
+)
+
 var (
 	_ btPage = btDPage{}
 	_ btPage = btXPage{}
@@ -47,15 +53,20 @@ type btPage interface {
 	len() (int, error)
 }
 
+// BTree is a B+tree.
 type BTree struct {
 	*DB
-	Off   int64
-	SzKey int64
-	SzVal int64
+	Off   int64 // Location in the database.
+	SzKey int64 // The szKey argument of NewBTree.
+	SzVal int64 // The szVal argument of NewBTree.
 	kd    int
 	kx    int
 }
 
+// NewBTree allocates and returns a new, empty BTree or an error, if any.  The
+// nd and nx arguments are the desired number of items in a data or index page.
+// Passing zero will use default values. The szKey and szVal arguments are the
+// sizes of the BTree keys and values.
 func (db *DB) NewBTree(nd, nx int, szKey, szVal int64) (*BTree, error) {
 	if nd < 0 || nd > (math.MaxInt32-1)/2 ||
 		nx < 0 || nx > (math.MaxInt32-2)/2 ||
@@ -64,11 +75,11 @@ func (db *DB) NewBTree(nd, nx int, szKey, szVal int64) (*BTree, error) {
 	}
 
 	if nd == 0 {
-		nd = 256 //TODO bench tune
+		nd = btND
 	}
 	kd := mathutil.Max(nd/2, 1)
 	if nx == 0 {
-		nx = 256 //TODO bench tune
+		nx = btNX
 	}
 	kx := mathutil.Max(nx/2, 2)
 	off, err := db.Calloc(szBTree)
@@ -95,6 +106,7 @@ func (db *DB) NewBTree(nd, nx int, szKey, szVal int64) (*BTree, error) {
 	return &BTree{DB: db, Off: off, SzKey: szKey, SzVal: szVal, kd: kd, kx: kx}, nil
 }
 
+// OpenBTree opend and returns an existing BTree or an error, if any.
 func (db *DB) OpenBTree(off int64) (*BTree, error) {
 	n, err := db.r8(off + oBTKD)
 	if err != nil {
@@ -183,9 +195,15 @@ func (t *BTree) openPage(off int64) (btPage, error) {
 	}
 }
 
-func (t *BTree) Len() (int64, error) { return t.r8(t.Off + oBTLen) }
+// Len returns the number of items i t or an error, if any.
+func (t *BTree) Len() (int64, error) { return t.r8(t.Off + oBTLen) } //TODO no error
 
-func (t *BTree) Clear(free func(int64, int64) error) error {
+// Clear deletes all items of t.
+//
+// The free function may be nil, otherwise it's called with the offsets of the
+// key and value of an item that is being deleted from the tree. Both koff and
+// voff may be zero when appropriate.
+func (t *BTree) Clear(free func(koff, voff int64) error) error {
 	r, err := t.root()
 	if err != nil {
 		return err
@@ -219,7 +237,16 @@ func (t *BTree) Clear(free func(int64, int64) error) error {
 	return t.setRoot(0)
 }
 
-func (t *BTree) Delete(cmp func(int64) (int, error), free func(int64, int64) error) (bool, error) {
+// Delete removes an item from t and returns a boolean value indicating if the
+// item was found.
+//
+// The item is searched for by calling the cmp function that gets the offset of
+// a tree key to compare. It returns a positive value if the desired key
+// collates after the tree key, a zero if the keys are equal and a negative
+// value if the desired key collates before the tree key.
+//
+// For discussion of the free function see Clear.
+func (t *BTree) Delete(cmp func(koff int64) (int, error), free func(koff, voff int64) error) (bool, error) {
 	pi := -1
 	var p btXPage
 	r, err := t.root()
@@ -343,7 +370,11 @@ func (t *BTree) Delete(cmp func(int64) (int, error), free func(int64, int64) err
 	}
 }
 
-func (t *BTree) Get(cmp func(int64) (int, error)) (int64, bool, error) {
+// Get searches for a key in the tree and returns the offset of its associated
+// value and a boolean value indicating success.
+//
+// For discussion of the cmp function see Delete.
+func (t *BTree) Get(cmp func(koff int64) (int, error)) (int64, bool, error) {
 	r, err := t.root()
 	if err != nil {
 		return 0, false, err
@@ -398,7 +429,10 @@ func (t *BTree) Get(cmp func(int64) (int, error)) (int64, bool, error) {
 	}
 }
 
-func (t *BTree) Remove(free func(k, v int64) error) (err error) {
+// Remove frees all space used by t.
+//
+// For discussion of the free function see Clear.
+func (t *BTree) Remove(free func(koff, voff int64) error) (err error) {
 	r, err := t.root()
 	if err != nil {
 		return err
@@ -408,9 +442,19 @@ func (t *BTree) Remove(free func(k, v int64) error) (err error) {
 		return err
 	}
 
-	return t.Free(t.Off)
+	if err := t.Free(t.Off); err != nil {
+		return err
+	}
+
+	t.Off = 0
+	return nil
 }
 
+// Seek searches the tree for a key collating after the key used by the cmp
+// function and a boolean value indicating the desired and found keys are
+// equal.
+//
+// For discussion of the cmp function see Delete.
 func (t *BTree) Seek(cmp func(int64) (int, error)) (*Enumerator, bool, error) {
 	r, err := t.root()
 	if err != nil {
@@ -465,6 +509,8 @@ func (t *BTree) Seek(cmp func(int64) (int, error)) (*Enumerator, bool, error) {
 	}
 }
 
+// SeekFirst returns an Enumerator position on the first item of t or an error,
+// if any.
 func (t *BTree) SeekFirst() (*Enumerator, error) {
 	p, err := t.first()
 	if err != nil {
@@ -478,6 +524,8 @@ func (t *BTree) SeekFirst() (*Enumerator, error) {
 	return t.openDPage(p).newEnumerator(0, true), nil
 }
 
+// SeekLast returns an Enumerator position on the last item of t or an error,
+// if any.
 func (t *BTree) SeekLast() (*Enumerator, error) {
 	p, err := t.last()
 	if err != nil {
@@ -493,7 +541,12 @@ func (t *BTree) SeekLast() (*Enumerator, error) {
 	return e, nil
 }
 
-func (t *BTree) Set(cmp func(int64) (int, error), free func(int64) error) (int64, int64, error) {
+// Set adds or overwrites an item in t and returns the offsets if its key and value or an error, if any.
+//
+// For discussion of the cmp function see Delete.
+//
+// For discussion of the free function see Clear.
+func (t *BTree) Set(cmp func(koff int64) (int, error), free func(koff int64) error) (int64, int64, error) {
 	pi := -1
 	r, err := t.root()
 	if err != nil {
@@ -668,7 +721,6 @@ func (d btDPage) setLen(n int) error    { return d.w4(d.off+oBTDPageLen, n) }
 func (d btDPage) setNext(n int64) error { return d.w8(d.off+oBTDPageNext, n) }
 func (d btDPage) setPrev(n int64) error { return d.w8(d.off+oBTDPagePrev, n) }
 func (d btDPage) setTag(n int) error    { return d.w4(d.off+oBTDPageTag, n) }
-func (d btDPage) tag() (int, error)     { return d.r4(d.off + oBTDPageTag) }
 func (d btDPage) voff(i int) int64      { return d.koff(i) + d.SzVal }
 
 func (d btDPage) cat(p btXPage, r btDPage, pi int, free func(int64, int64) error) error {
@@ -762,13 +814,23 @@ func (d btDPage) copy(s btDPage, di, si, n int) error {
 		return nil
 	}
 
-	switch nb := (d.SzKey + d.SzVal) * int64(n); {
-	case nb > mathutil.MaxInt:
-		panic("TODO")
-	default:
-		nb := int(nb)
-		p := buffer.Get(nb)
-		if nr, err := s.ReadAt(*p, s.koff(si)); nr != nb {
+	dst := d.koff(di)
+	src := s.koff(si)
+	var rq int
+	var p *[]byte
+	var b []byte
+	for rem := (d.SzKey + d.SzVal) * int64(n); rem != 0; rem -= int64(rq) {
+		if rem <= maxCopyBuf {
+			rq = int(rem)
+		} else {
+			rq = maxCopyBuf
+		}
+
+		if p == nil {
+			p = buffer.Get(rq)
+			b = *p
+		}
+		if nr, err := s.ReadAt(b[:rq], src); nr != rq {
 			if err == nil {
 				panic("internal error")
 			}
@@ -777,7 +839,7 @@ func (d btDPage) copy(s btDPage, di, si, n int) error {
 			return err
 		}
 
-		if nw, err := d.WriteAt(*p, d.koff(di)); nw != nb {
+		if nw, err := d.WriteAt(b[:rq], dst); nw != rq {
 			if err == nil {
 				panic("internal error")
 			}
@@ -785,9 +847,10 @@ func (d btDPage) copy(s btDPage, di, si, n int) error {
 			buffer.Put(p)
 			return err
 		}
-
-		buffer.Put(p)
+		src += int64(rq)
+		dst += int64(rq)
 	}
+	buffer.Put(p)
 	return nil
 }
 
@@ -870,10 +933,10 @@ func (d btDPage) insert(i int) error {
 	return d.BTree.setLen(n + 1)
 }
 
-func (p btDPage) newEnumerator(i int, hit bool) *Enumerator {
-	c, err := p.len()
+func (d btDPage) newEnumerator(i int, hit bool) *Enumerator {
+	c, err := d.len()
 	return &Enumerator{
-		btDPage: p,
+		btDPage: d,
 		c:       c,
 		err:     err,
 		hit:     hit,
@@ -1137,7 +1200,6 @@ func (x btXPage) setChild(i int, c int64) error   { return x.w8(x.off+oBTXPageIt
 func (x btXPage) setKey(i int, k int64) error     { return x.w8(x.off+oBTXPageItems+int64(i)*16+8, k) }
 func (x btXPage) setLen(n int) error              { return x.w4(x.off+oBTXPageLen, n) }
 func (x btXPage) setTag(n int) error              { return x.w4(x.off+oBTXPageTag, n) }
-func (x btXPage) tag() (int, error)               { return x.r4(x.off + oBTXPageTag) }
 
 func (x btXPage) cat(p btXPage, r btXPage, pi int) error {
 	k, err := p.key(pi)
@@ -1645,9 +1707,10 @@ func (x btXPage) underflow(p btXPage, pi, i int) (btXPage, int, error) {
 	return x, i, nil
 }
 
+// Enumerator is a BTree cursor.
 type Enumerator struct {
-	K int64
-	V int64
+	K int64 // Item key offset. Not valid before first calling Next or Prev.
+	V int64 // Item value offset. Not valid before first calling Next or Prev.
 	btDPage
 	c        int
 	err      error
@@ -1656,8 +1719,12 @@ type Enumerator struct {
 	i        int
 }
 
+// Err returns the error, if any, the enumerator encountered after Next/Prev
+// returns false.
 func (e *Enumerator) Err() error { return e.err }
 
+// Next moves the cursor to the next item in the tree and returns a boolean
+// value indicating success.
 func (e *Enumerator) Next() bool {
 	if e.err != nil || e.off == 0 {
 		return false
@@ -1688,6 +1755,8 @@ func (e *Enumerator) Next() bool {
 	return true
 }
 
+// Prev moves the cursor to the previous item in the tree and returns a boolean
+// value indicating success.
 func (e *Enumerator) Prev() bool {
 	if e.err != nil || e.off == 0 {
 		return false

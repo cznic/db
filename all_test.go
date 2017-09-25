@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-//TODO test DB reopen for all containers
-
 package db
 
 import (
@@ -57,7 +55,7 @@ func TODO(...interface{}) string { //TODOOK
 func use(...interface{}) {}
 
 func init() {
-	use(caller, dbg, TODO) //TODOOK
+	use(caller, dbg, TODO, (*BTree).dump) //TODOOK
 }
 
 // ============================================================================
