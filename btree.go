@@ -142,7 +142,7 @@ func (db *DB) OpenBTree(off int64) (*BTree, error) {
 
 func (t *BTree) first() (int64, error)       { return t.r8(t.Off + oBTFirst) }
 func (t *BTree) last() (int64, error)        { return t.r8(t.Off + oBTLast) }
-func (t *BTree) openDPage(off int64) btDPage { return btDPage{t, off} }
+func (t *BTree) openDPage(off int64) btDPage { return btDPage{BTree: t, off: off} }
 func (t *BTree) openXPage(off int64) btXPage { return btXPage{t, off} }
 func (t *BTree) root() (int64, error)        { return t.r8(t.Off + oBTRoot) }
 func (t *BTree) setFirst(n int64) error      { return t.w8(t.Off+oBTFirst, n) }
@@ -537,7 +537,7 @@ func (t *BTree) SeekLast() (*BTreeCursor, error) {
 	}
 
 	e := t.openDPage(p).newEnumerator(0, true)
-	e.i = e.c - 1
+	e.i = e.dc - 1
 	return e, nil
 }
 
@@ -683,6 +683,7 @@ const (
 
 type btDPage struct {
 	*BTree
+	c   int
 	off int64
 }
 
@@ -693,7 +694,7 @@ func newBTDPage(t *BTree) (btDPage, error) {
 		return btDPage{}, err
 	}
 
-	r := btDPage{t, off}
+	r := btDPage{BTree: t, off: off}
 	if err := r.setTag(btTagDataPage); err != nil {
 		return btDPage{}, err
 	}
@@ -713,11 +714,11 @@ func newBTDPage(t *BTree) (btDPage, error) {
 	return r, nil
 }
 
+func (d *btDPage) setLen(n int) error   { d.c = n; return d.w4(d.off+oBTDPageLen, n) }
 func (d btDPage) koff(i int) int64      { return d.off + oBTDPageItems + int64(i)*(d.SzKey+d.SzVal) }
 func (d btDPage) len() (int, error)     { return d.r4(d.off + oBTDPageLen) }
 func (d btDPage) next() (int64, error)  { return d.r8(d.off + oBTDPageNext) }
 func (d btDPage) prev() (int64, error)  { return d.r8(d.off + oBTDPagePrev) }
-func (d btDPage) setLen(n int) error    { return d.w4(d.off+oBTDPageLen, n) }
 func (d btDPage) setNext(n int64) error { return d.w8(d.off+oBTDPageNext, n) }
 func (d btDPage) setPrev(n int64) error { return d.w8(d.off+oBTDPagePrev, n) }
 func (d btDPage) setTag(n int) error    { return d.w4(d.off+oBTDPageTag, n) }
@@ -937,7 +938,7 @@ func (d btDPage) newEnumerator(i int, hit bool) *BTreeCursor {
 	c, err := d.len()
 	return &BTreeCursor{
 		btDPage: d,
-		c:       c,
+		dc:      c,
 		err:     err,
 		hit:     hit,
 		i:       i,
@@ -1712,7 +1713,7 @@ type BTreeCursor struct {
 	K int64 // Item key offset. Not valid before calling Next or Prev.
 	V int64 // Item value offset. Not valid before calling Next or Prev.
 	btDPage
-	c        int
+	dc       int //TODO-
 	err      error
 	hasMoved bool
 	hit      bool
@@ -1739,7 +1740,7 @@ func (e *BTreeCursor) Next() bool {
 	}
 
 	e.hasMoved = true
-	if e.i < e.c {
+	if e.i < e.dc {
 		e.K = e.koff(e.i)
 		e.V = e.K + e.SzKey
 		return true
@@ -1749,7 +1750,7 @@ func (e *BTreeCursor) Next() bool {
 		return false
 	}
 
-	if e.c, e.err = e.len(); e.err != nil {
+	if e.dc, e.err = e.len(); e.err != nil {
 		return false
 	}
 
@@ -1786,11 +1787,11 @@ func (e *BTreeCursor) Prev() bool {
 		return false
 	}
 
-	if e.c, e.err = e.len(); e.err != nil {
+	if e.dc, e.err = e.len(); e.err != nil {
 		return false
 	}
 
-	e.i = e.c - 1
+	e.i = e.dc - 1
 	e.K = e.koff(e.i)
 	e.V = e.K + e.SzKey
 	return true
