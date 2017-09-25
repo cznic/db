@@ -537,7 +537,7 @@ func (t *BTree) SeekLast() (*BTreeCursor, error) {
 	}
 
 	e := t.openDPage(p).newEnumerator(0, true)
-	e.i = e.dc - 1
+	e.i = e.c - 1
 	return e, nil
 }
 
@@ -937,7 +937,7 @@ func (d btDPage) newEnumerator(i int, hit bool) *BTreeCursor {
 	c, err := d.len()
 	return &BTreeCursor{
 		btDPage: d,
-		dc:      c,
+		c:       c,
 		err:     err,
 		hit:     hit,
 		i:       i,
@@ -1712,7 +1712,7 @@ type BTreeCursor struct {
 	K int64 // Item key offset. Not valid before calling Next or Prev.
 	V int64 // Item value offset. Not valid before calling Next or Prev.
 	btDPage
-	dc       int //TODO-
+	c        int //TODO-
 	err      error
 	hasMoved bool
 	hit      bool
@@ -1739,7 +1739,7 @@ func (e *BTreeCursor) Next() bool {
 	}
 
 	e.hasMoved = true
-	if e.i < e.dc {
+	if e.i < e.c {
 		e.K = e.koff(e.i)
 		e.V = e.K + e.SzKey
 		return true
@@ -1749,7 +1749,7 @@ func (e *BTreeCursor) Next() bool {
 		return false
 	}
 
-	if e.dc, e.err = e.len(); e.err != nil {
+	if e.c, e.err = e.len(); e.err != nil {
 		return false
 	}
 
@@ -1786,11 +1786,11 @@ func (e *BTreeCursor) Prev() bool {
 		return false
 	}
 
-	if e.dc, e.err = e.len(); e.err != nil {
+	if e.c, e.err = e.len(); e.err != nil {
 		return false
 	}
 
-	e.i = e.dc - 1
+	e.i = e.c - 1
 	e.K = e.koff(e.i)
 	e.V = e.K + e.SzKey
 	return true
