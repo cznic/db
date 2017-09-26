@@ -157,3 +157,5 @@ func w8(s Storage, off, n int64) error {
 	buffer.Put(p)
 	return err
 }
+
+//TODO {inc,dec}4

@@ -11,10 +11,13 @@
 package db
 
 import (
+	"bytes"
 	"fmt"
+	"runtime/debug"
 	"testing"
 
 	"github.com/cznic/file"
+	"github.com/cznic/strutil"
 )
 
 func (t *BTree) cmp(n int) func(off int64) (int, error) {
@@ -60,7 +63,7 @@ func (t *BTree) bcmp(n int) func(off int64) (int, error) {
 	}
 }
 
-func (t *BTree) len(tb testing.TB) int64 {
+func (t *BTree) tlen(tb testing.TB) int64 {
 	c, err := t.Len()
 	if err != nil {
 		tb.Fatal(err)
@@ -271,22 +274,22 @@ func (t *BTree) seekLast(tb testing.TB) *BTreeCursor {
 
 func (e *BTreeCursor) next(tb testing.TB) (int, int, bool) {
 	if e.Next() {
-		p, err := e.r8(e.K)
+		p, err := e.t.r8(e.K)
 		if err != nil {
 			tb.Fatal(err)
 		}
 
-		k, err := e.r4(p)
+		k, err := e.t.r4(p)
 		if err != nil {
 			tb.Fatal(err)
 		}
 
-		q, err := e.r8(e.V)
+		q, err := e.t.r8(e.V)
 		if err != nil {
 			tb.Fatal(err)
 		}
 
-		v, err := e.r4(q)
+		v, err := e.t.r4(q)
 		if err != nil {
 			tb.Fatal(err)
 		}
@@ -299,22 +302,22 @@ func (e *BTreeCursor) next(tb testing.TB) (int, int, bool) {
 
 func (e *BTreeCursor) prev(tb testing.TB) (int, int, bool) {
 	if e.Prev() {
-		p, err := e.r8(e.K)
+		p, err := e.t.r8(e.K)
 		if err != nil {
 			tb.Fatal(err)
 		}
 
-		k, err := e.r4(p)
+		k, err := e.t.r4(p)
 		if err != nil {
 			tb.Fatal(err)
 		}
 
-		q, err := e.r8(e.V)
+		q, err := e.t.r8(e.V)
 		if err != nil {
 			tb.Fatal(err)
 		}
 
-		v, err := e.r4(q)
+		v, err := e.t.r4(q)
 		if err != nil {
 			tb.Fatal(err)
 		}
@@ -323,6 +326,155 @@ func (e *BTreeCursor) prev(tb testing.TB) (int, int, bool) {
 	}
 
 	return 0, 0, false
+}
+
+func (t *BTree) dump() (r string) {
+	var buf bytes.Buffer
+
+	defer func() {
+		if err := recover(); err != nil {
+			dbg("%q\n%s", err, debug.Stack())
+			r = fmt.Sprint(err)
+		}
+	}()
+
+	f := strutil.IndentFormatter(&buf, "\t")
+
+	num := map[int64]int{}
+	visited := map[int64]bool{}
+
+	handle := func(off int64) int {
+		if off == 0 {
+			return 0
+		}
+
+		if n, ok := num[off]; ok {
+			return n
+		}
+
+		n := len(num) + 1
+		num[off] = n
+		return n
+	}
+
+	var pagedump func(int64, string)
+	pagedump = func(off int64, pref string) {
+		if off == 0 || visited[off] {
+			return
+		}
+
+		visited[off] = true
+		p, err := t.openPage(off)
+		if err != nil {
+			panic(err)
+		}
+
+		switch x := p.(type) {
+		case btDPage:
+			c, err := t.len(x)
+			if err != nil {
+				panic(err)
+			}
+
+			p, err := t.prev(x)
+			if err != nil {
+				panic(err)
+			}
+
+			n, err := t.next(x)
+			if err != nil {
+				panic(err)
+			}
+
+			f.Format("%sD#%d(%#x) P#%d N#%d len %d {", pref, handle(off), off, handle(int64(p)), handle(int64(n)), c)
+			for i := 0; i < c; i++ {
+				if i != 0 {
+					f.Format(" ")
+				}
+				koff := t.key(x, i)
+				voff := t.val(x, i)
+				p, err := t.r8(koff)
+				if err != nil {
+					panic(err)
+				}
+
+				k, err := t.r4(p)
+				if err != nil {
+					panic(err)
+				}
+
+				q, err := t.r8(voff)
+				if err != nil {
+					panic(err)
+				}
+
+				v, err := t.r4(q)
+				if err != nil {
+					panic(err)
+				}
+
+				f.Format("%v:%v", k, v)
+			}
+			f.Format("}\n")
+		case btXPage:
+			c, err := t.lenX(x)
+			if err != nil {
+				panic(err)
+			}
+
+			f.Format("%sX#%d(%#x) len %d {", pref, handle(off), off, c)
+			a := []int64{}
+			for i := 0; i <= c; i++ {
+				ch, err := t.child(x, i)
+				if err != nil {
+					panic(err)
+				}
+
+				a = append(a, ch)
+				if i != 0 {
+					f.Format(" ")
+				}
+				f.Format("(C#%d(%#x)", handle(ch), ch)
+				if i != c {
+					ko, err := t.keyX(x, i)
+					if err != nil {
+						panic(err)
+					}
+
+					p, err := t.r8(ko)
+					if err != nil {
+						panic(err)
+					}
+
+					k, err := t.r4(p)
+					if err != nil {
+						panic(err)
+					}
+
+					f.Format(" K %v(%#x))", k, ko)
+				}
+				f.Format(")")
+			}
+			f.Format("}\n")
+			for _, p := range a {
+				pagedump(p, pref+". ")
+			}
+		default:
+			panic(fmt.Errorf("%T", x))
+		}
+	}
+
+	root, err := t.root()
+	if err != nil {
+		return err.Error()
+	}
+
+	pagedump(root, "")
+	s := buf.String()
+	if s != "" {
+		s = s[:len(s)-1]
+	}
+	return s
 }
 
 func testBTreeGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
@@ -338,7 +490,7 @@ func testBTreeGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 	defer bt.remove(t)
 
 	g := func() {
-		if g, e := bt.len(t), int64(0); g != e {
+		if g, e := bt.tlen(t), int64(0); g != e {
 			t.Fatal(g, e)
 		}
 
@@ -378,7 +530,7 @@ func testBTreeSetGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 	g := func() {
 		bt.clear(t)
 		bt.set(t, 42, 314)
-		if g, e := bt.len(t), int64(1); g != e {
+		if g, e := bt.tlen(t), int64(1); g != e {
 			t.Fatal(g, e)
 		}
 
@@ -392,7 +544,7 @@ func testBTreeSetGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 		}
 
 		bt.set(t, 42, 278)
-		if g, e := bt.len(t), int64(1); g != e {
+		if g, e := bt.tlen(t), int64(1); g != e {
 			t.Fatal(g, e)
 		}
 
@@ -406,7 +558,7 @@ func testBTreeSetGet0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 		}
 
 		bt.set(t, 420, 5)
-		if g, e := bt.len(t), int64(2); g != e {
+		if g, e := bt.tlen(t), int64(2); g != e {
 			t.Fatal(g, e)
 		}
 
@@ -465,7 +617,7 @@ func testBTreeSetGet1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 			}
 			for i, k := range a {
 				bt.set(t, k, k^x)
-				if g, e := bt.len(t), int64(i+1); g != e {
+				if g, e := bt.tlen(t), int64(i+1); g != e {
 					t.Fatal(i, g, e)
 				}
 			}
@@ -566,7 +718,7 @@ func testBTreeSplitXOnEdge(t *testing.T, ts func(t testing.TB) (file.File, func(
 		}
 
 		x0 := bt.openXPage(r)
-		x0c, err := x0.len()
+		x0c, err := bt.lenX(x0)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -577,16 +729,16 @@ func testBTreeSplitXOnEdge(t *testing.T, ts func(t testing.TB) (file.File, func(
 
 		// set element with k directly at x0[kx].k
 		kedge := 2 * (kx + 1) * (2 * kd)
-		pk, err := x0.key(kx)
+		pk, err := bt.keyX(x0, kx)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if pk, err = x0.r8(pk); err != nil {
+		if pk, err = bt.r8(pk); err != nil {
 			t.Fatal(err)
 		}
 
-		k, err := x0.r4(pk)
+		k, err := bt.r4(pk)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -609,7 +761,7 @@ func testBTreeSplitXOnEdge(t *testing.T, ts func(t testing.TB) (file.File, func(
 		}
 
 		xr := bt.openXPage(r)
-		xrc, err := xr.len()
+		xrc, err := bt.lenX(xr)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -618,12 +770,12 @@ func testBTreeSplitXOnEdge(t *testing.T, ts func(t testing.TB) (file.File, func(
 			t.Fatalf("after splitX: xr.c: %v  ; expected 1", xrc)
 		}
 
-		xr0ch, err := xr.child(0)
+		xr0ch, err := bt.child(xr, 0)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if xr0ch != x0.off {
+		if xr0ch != int64(x0) {
 			t.Fatal("xr[0].ch is not x0")
 		}
 
@@ -632,7 +784,7 @@ func testBTreeSplitXOnEdge(t *testing.T, ts func(t testing.TB) (file.File, func(
 		}
 
 		// check x0 is in pre-splitX condition and still at the right place
-		if x0c, err = x0.len(); err != nil {
+		if x0c, err = bt.lenX(x0); err != nil {
 			t.Fatal(err)
 		}
 
@@ -640,25 +792,25 @@ func testBTreeSplitXOnEdge(t *testing.T, ts func(t testing.TB) (file.File, func(
 			t.Fatalf("x0.c: %v  ; expected %v", x0c, 2*kx+1)
 		}
 
-		if xr0ch, err = xr.child(0); err != nil {
+		if xr0ch, err = bt.child(xr, 0); err != nil {
 			t.Fatal(err)
 		}
 
-		if xr0ch != x0.off {
+		if xr0ch != int64(x0) {
 			t.Fatal("xr[0].ch is not x0")
 		}
 
 		// set element with k directly at x0[kx].k
 		kedge = (kx + 1) * (2 * kd)
-		if pk, err = x0.key(kx); err != nil {
+		if pk, err = bt.keyX(x0, kx); err != nil {
 			t.Fatal(err)
 		}
 
-		if pk, err = x0.r8(pk); err != nil {
+		if pk, err = bt.r8(pk); err != nil {
 			t.Fatal(err)
 		}
 
-		x0kxk, err := x0.r4(pk)
+		x0kxk, err := bt.r4(pk)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -713,7 +865,7 @@ func testBTreeSetGet2(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 			}
 			for i, k := range a {
 				bt.set(t, k, k^x)
-				if g, e := bt.len(t), int64(i)+1; g != e {
+				if g, e := bt.tlen(t), int64(i)+1; g != e {
 					t.Fatal(i, x, g, e)
 				}
 			}
@@ -852,7 +1004,7 @@ func testBTreeDelete0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 		t.Fatal(ok)
 	}
 
-	if g, e := bt.len(t), int64(0); g != e {
+	if g, e := bt.tlen(t), int64(0); g != e {
 		t.Fatal(g, e)
 	}
 
@@ -861,7 +1013,7 @@ func testBTreeDelete0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 		t.Fatal(ok)
 	}
 
-	if g, e := bt.len(t), int64(1); g != e {
+	if g, e := bt.tlen(t), int64(1); g != e {
 		t.Fatal(g, e)
 	}
 
@@ -869,7 +1021,7 @@ func testBTreeDelete0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 		t.Fatal(ok)
 	}
 
-	if g, e := bt.len(t), int64(0); g != e {
+	if g, e := bt.tlen(t), int64(0); g != e {
 		t.Fatal(g, e)
 	}
 
@@ -883,7 +1035,7 @@ func testBTreeDelete0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 		t.Fatal(ok)
 	}
 
-	if g, e := bt.len(t), int64(1); g != e {
+	if g, e := bt.tlen(t), int64(1); g != e {
 		t.Fatal(g, e)
 	}
 
@@ -895,7 +1047,7 @@ func testBTreeDelete0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 		t.Fatal(ok)
 	}
 
-	if g, e := bt.len(t), int64(0); g != e {
+	if g, e := bt.tlen(t), int64(0); g != e {
 		t.Fatal(g, e)
 	}
 
@@ -909,7 +1061,7 @@ func testBTreeDelete0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 		t.Fatal(ok)
 	}
 
-	if g, e := bt.len(t), int64(1); g != e {
+	if g, e := bt.tlen(t), int64(1); g != e {
 		t.Fatal(g, e)
 	}
 
@@ -921,7 +1073,7 @@ func testBTreeDelete0(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 		t.Fatal(ok)
 	}
 
-	if g, e := bt.len(t), int64(0); g != e {
+	if g, e := bt.tlen(t), int64(0); g != e {
 		t.Fatal(g, e)
 	}
 
@@ -966,7 +1118,7 @@ func testBTreeDelete1(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 					t.Fatal(i, x, k)
 				}
 
-				if g, e := bt.len(t), int64(N-i-1); g != e {
+				if g, e := bt.tlen(t), int64(N-i-1); g != e {
 					t.Fatal(i, g, e)
 				}
 			}
@@ -1012,7 +1164,7 @@ func testBTreeDelete2(t *testing.T, ts func(t testing.TB) (file.File, func())) {
 					t.Fatal(i, x, k)
 				}
 
-				if g, e := bt.len(t), int64(N-i-1); g != e {
+				if g, e := bt.tlen(t), int64(N-i-1); g != e {
 					t.Fatal(i, g, e)
 				}
 			}
