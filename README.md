@@ -1,6 +1,6 @@
 # db
 
-Package DB implements some data structures found in database implementations.
+Package DB implements some data structures found in database implementations. (Work in Progress)
 
 Installation
 
