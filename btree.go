@@ -74,9 +74,9 @@ type btPage interface {
 // BTree is a B+tree.
 type BTree struct {
 	*DB
-	Off   int64 // Location in the database.
-	SzKey int64 // The szKey argument of NewBTree.
-	SzVal int64 // The szVal argument of NewBTree.
+	Off   int64 // Location in the database. R/O
+	SzKey int64 // The szKey argument of NewBTree. R/O
+	SzVal int64 // The szVal argument of NewBTree. R/O
 	kd    int
 	kx    int
 }
@@ -1171,8 +1171,8 @@ func (t *BTree) underflowX(p, q btXPage, pc, qc, pi, i int) (btXPage, int, error
 	return q, i, nil
 }
 
-// Len returns the number of items i t or an error, if any.
-func (t *BTree) Len() (int64, error) { return t.r8(t.Off + oBTLen) } //TODO no error
+// Len returns the number of items in t or an error, if any.
+func (t *BTree) Len() (int64, error) { return t.r8(t.Off + oBTLen) }
 
 // Clear deletes all items of t.
 //
