@@ -12,7 +12,7 @@ const (
 // SList is a node of a single linked list.
 type SList struct {
 	*DB
-	Off int64
+	Off int64 // Location in the database. R/O
 }
 
 // NewSList returns a newly allocated SList or an error, if any. The datasize
@@ -38,7 +38,8 @@ func (db *DB) NewSList(dataSize int64) (SList, error) {
 
 func (l SList) setNext(off int64) error { return l.w8(l.Off+oSListNext, off) }
 
-// OpenSList returns an SList found at offset off.
+// OpenSList returns an existing SList found at offset off or an error, of any.
+// The off argument must have been acquired from NewSList.
 func (db *DB) OpenSList(off int64) (SList, error) { return SList{db, off}, nil }
 
 // DataOff returns the offset in db at which data of l are located.

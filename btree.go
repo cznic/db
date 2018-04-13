@@ -124,7 +124,8 @@ func (db *DB) NewBTree(nd, nx int, szKey, szVal int64) (*BTree, error) {
 	return &BTree{DB: db, Off: off, SzKey: szKey, SzVal: szVal, kd: kd, kx: kx}, nil
 }
 
-// OpenBTree opend and returns an existing BTree or an error, if any.
+// OpenBTree returns an existing BTree found at offset off or an error, if any.
+// The off argument must have been acquired from NewBTree.
 func (db *DB) OpenBTree(off int64) (*BTree, error) {
 	n, err := db.r8(off + oBTKD)
 	if err != nil {

@@ -13,7 +13,7 @@ const (
 // DList is a node of a doubly linked list.
 type DList struct {
 	*DB
-	Off int64
+	Off int64 // Location in the database. R/O
 }
 
 // NewDList returns a newly allocated DList or an error, if any. The datasize
@@ -41,7 +41,8 @@ func (db *DB) NewDList(dataSize int64) (DList, error) {
 	return r, r.setNext(0)
 }
 
-// OpenDList returns a DList found at offset off.
+// OpenDList returns an existing DList found at offset off or an error, if any.
+// The off argument must have been acquired from NewDList.
 func (db *DB) OpenDList(off int64) (DList, error) { return DList{db, off}, nil }
 
 func (l DList) setNext(off int64) error { return l.w8(l.Off+oDListNext, off) }
