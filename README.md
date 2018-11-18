@@ -1,9 +1,5 @@
-# db
+`github.com/cznic/db` has moved to [`modernc.org/db`](https://godoc.org/modernc.org/db) ([vcs](https://gitlab.com/cznic/db)).
 
-Package DB implements some data structures found in database implementations. (Work in Progress)
+Please update your import paths to `modernc.org/db`.
 
-Installation
-
-    $ go get github.com/cznic/db
-
-Documentation: [godoc.org/github.com/cznic/db](http://godoc.org/github.com/cznic/db)
+This repo is now archived.
